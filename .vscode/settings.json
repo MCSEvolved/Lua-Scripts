@@ -1,0 +1,19 @@
+{
+    "Lua.diagnostics.globals": [
+        "turtle",
+        "peripheral",
+        "redstone",
+        "colors",
+        "gps",
+        "fs",
+        "http",
+        "read",
+        "rs",
+        "parallel",
+        "shell",
+        "term",
+        "textutils",
+        "keys"
+    ],
+    "mcs-filesyncer.enabled": true
+}
