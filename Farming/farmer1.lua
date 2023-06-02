@@ -7,15 +7,19 @@ local function selectItem(item)
     local itemToSelect = item
     if item == "minecraft:wheat" then
         itemToSelect = "minecraft:wheat_seeds"
+    elseif item == "minecraft:carrots" then
+        itemToSelect = "minecraft:carrot"
+    elseif item == "minecraft:potatoes" then
+        itemToSelect = "minecraft:potato"
     end
     for i = 1, 16 do  
         local foundItem = turtle.getItemDetail(i)
-        if item and item.name == itemToSelect then
+        if foundItem and foundItem.name == itemToSelect then
             turtle.select(i)
             return
         end
     end
-    error("Couldnt plant " + item)
+    error("Couldnt plant "..item)
 end
 
 
@@ -29,8 +33,8 @@ end
 local function harvest()
     local succes, block = turtle.inspectDown()
     if succes and block.state.age == 7 then
-        turtle.digDown()
         lastHarvest = block.name
+        turtle.digDown()
     else
         lastHarvest = ""
     end
@@ -41,7 +45,7 @@ local function returnToStart()
     turtle.turnRight()
     turtle.turnRight()
     while true do
-        if !turtle.forward() then
+        if turtle.forward() == false then
             local succes, block = turtle.inspect()
             local succesDown, blockDown = turtle.inspectDown()
             if succes and block.name == "minecraft:oak_log" then
@@ -64,25 +68,34 @@ end
 local function turnToNextRow()
     if currentRow % 2 == 1 then
         turtle.turnLeft()
-        if !turtle.forward() then
+        if turtle.forward() == false then
             returnToStart()
+            return false
         end
         turtle.turnLeft()
     elseif currentRow % 2 == 0 then
         turtle.turnRight()
-        if !turtle.forward() then
+        if turtle.forward() == false then
             returnToStart()
+            return false
         end
         turtle.turnRight()
+        return true
     end
 
-    currentRow = currentRow + 1
+    
 end
 
 local function startFarming()
+    if turtle.getFuelLevel() < 799 then
+        error("Not enough fuel")
+    end
     while isFarming do
-        if !turtle.forward() then
-            turnToNextRow()
+        if turtle.forward() == false then
+            if turnToNextRow() == false then
+                return
+            end
+            currentRow = currentRow + 1
         end
         harvest()
         plant()
@@ -98,7 +111,9 @@ local function dropItems()
             local selectedItem = turtle.getItemDetail(i)
             if selectedItem ~= nil then
                 turtle.select(i)
-                turtle.drop()
+                if turtle.dropDown() == false then
+                    error("Chest is full")
+                end
             end
         end
     else
@@ -110,9 +125,13 @@ end
 
 
 local function main()
-    startFarming()
     dropItems()
-    --sleep(300)
+    while true do
+        startFarming()
+        currentRow = 1
+        dropItems()
+        sleep(1800)
+    end
 end
 
 
