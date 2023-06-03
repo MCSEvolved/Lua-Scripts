@@ -230,6 +230,9 @@ local function main()
         if not tempEmptyInventory() then
             logError("Chest is full", true)
         end
+        if not fuelCheck(1000) then
+            logError("Not enough fuel", true)
+        end
         sleep(harvestInterval)
     end
 end
