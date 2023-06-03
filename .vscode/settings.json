@@ -13,7 +13,8 @@
         "shell",
         "term",
         "textutils",
-        "keys"
+        "keys",
+        "sleep"
     ],
     "mcs-filesyncer.enabled": true
 }
