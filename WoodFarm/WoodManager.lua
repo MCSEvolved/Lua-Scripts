@@ -4,6 +4,7 @@ local function findWirelessModem()
     end)
 end
 
+
 local function arrayContainsElement (tab, val)
     for index, value in ipairs(tab) do
         if value == val then
@@ -19,7 +20,6 @@ local function getAllTurtles()
     for key, value in pairs(peripheral.getNames()) do
         if value:find("turtle") then
             table.insert(list, value)
-            --print(textutils.serialise(value))
         end
     end
     return list
@@ -39,6 +39,20 @@ local meBridge = peripheral.find("meBridge")
 local turtles = {}
 
 local tasklist = {}
+
+local function getMeBridge()
+    meBridge = peripheral.find("meBridge")
+    if meBridge then
+        return meBridge
+    else
+        print("ME OFFLINE, WAITING...")
+        while meBridge == nil do
+            meBridge = peripheral.find("meBridge")
+            os.sleep(1)
+        end
+        return meBridge
+    end
+end
 
 
 
@@ -63,27 +77,8 @@ local function sendOverWireless(type, data)
         origin = "MANAGER",
         data = data
     }
-    print("SENT "..textutils.serialise(message))
+    print("[SENT] "..message.type.." TO "..message.data)
     wirelessModem.transmit(wirelessChannel, wirelessChannel, message)
-end
-
-local function checkInTurtle(turtleId)
-    local contains, index = arrayContainsElement(turtles, getNameOfTurtleById(turtleId))
-    if contains then
-        return
-    else
-        --turtles.insert(getNameOfTurtleById(turtleId))
-        sendOverWireless("ONLINE", turtleId)
-    end
-end
-
-local function checkOutTurtle(turtleId)
-    print("CHECKOUT")
-    local contains, index = arrayContainsElement(turtles, getNameOfTurtleById(turtleId))
-    if contains then
-        --table.remove(turtles, index)
-    end
-    sendOverWireless("OFFLINE", turtleId)
 end
 
 local function emptyInventoryOfTurtle(turtleId)
@@ -94,13 +89,13 @@ local function emptyInventoryOfTurtle(turtleId)
         if item and item.name == "minecraft:spruce_log" then
             print(i.." TO WOOD")
             if bufferChestWood.pullItems(bufferTurtleDumpName, 1) < item.count then
-                print("error1")
+                print("Buffer Chest is full")
                 return false
             end
         else
             if item then
                 print(i.." TO ME")
-                local amountPulled = meBridge.importItemFromPeripheral({name=item.name, count=item.count}, bufferTurtleDumpName)
+                local amountPulled = getMeBridge().importItemFromPeripheral({name=item.name, count=item.count}, bufferTurtleDumpName)
                 -- if  amountPulled < item.count then
                 --     print("error2")
                 --     return false
@@ -114,20 +109,33 @@ end
 local function giveFuel(turtleId, amount)
     print("GIVING FUEL TO "..turtleId)
     --emptyInventoryOfTurtle(turtleId)
-    if meBridge.exportItemToPeripheral({name="minecraft:charcoal", count=amount}, getNameOfTurtleById(turtleId)) < amount then
+    local amountPulled = getMeBridge().exportItemToPeripheral({name="minecraft:charcoal", count=amount}, getNameOfTurtleById(turtleId))
+    if amountPulled ~= nil then
+        if amountPulled  < amount then
+            return false
+        else
+            return true
+        end
+    else 
         return false
     end
-    return true
 end
 
 
 local function giveSaplings(turtleId)
     print("GIVING SAPLINGS TO "..turtleId)
     emptyInventoryOfTurtle(turtleId)
-    if meBridge.exportItemToPeripheral({name="minecraft:spruce_sapling", count=24}, getNameOfTurtleById(turtleId)) < 24 then
+    local amountPulled = getMeBridge().exportItemToPeripheral({name="minecraft:spruce_sapling", count=24}, getNameOfTurtleById(turtleId))
+    if amountPulled ~= nil then
+        if amountPulled  < 24 then
+            return 
+        else
+            return true
+        end
+    else
         return false
     end
-    return true
+    
 end
 
 local function startTurtle(turtleId)
@@ -136,16 +144,16 @@ end
 
 local function executeCommands()
     while true do
-        print("WAITING FOR COMMANDS")
-        if #tasklist == 0 then
+        if #tasklist < 1 then
             os.pullEvent("task_added")
         end
         local message = tasklist[#tasklist]
         table.remove(tasklist, #tasklist)
-        print("COMMAND: "..textutils.serialise(message))
-        if message.type == "CHECK_IN" then
-            checkInTurtle(getNameOfTurtleById(message.origin))
-        elseif message.type == "REQUEST_FUEL" then
+        print("[COMMAND] "..message.type.. " FROM: "..message.origin)
+        if message == nil then
+            error("Message was nil for some reason")
+        end
+        if message.type == "REQUEST_FUEL" then
             giveFuel(message.origin, message.data)
             print("DONE FUEL "..message.origin)
         elseif message.type == "EMPTY_INVENTORY" then
@@ -163,11 +171,8 @@ end
 local function listenOnWireless()
     while true do
         local event, side, channel, replyChannel, message, distance = os.pullEvent("modem_message")
-        print("RECEIVED: "..textutils.serialise(message))
-        if message.type == "CHECK_IN" then
-            table.insert(tasklist, 1, message)
-            os.queueEvent("task_added")
-        elseif message.type == "REQUEST_FUEL" then
+        print("[RECEIVED] "..message.type.." FROM: "..message.origin)
+        if message.type == "REQUEST_FUEL" then
             table.insert(tasklist, 1, message)
             os.queueEvent("task_added")
         elseif message.type == "EMPTY_INVENTORY" then
@@ -180,6 +185,7 @@ local function listenOnWireless()
             table.insert(tasklist, 1, message)
             os.queueEvent("task_added")
         end
+        sendOverWireless("TASK_RECEIVED", message.origin)
     end
 end
 
@@ -192,11 +198,14 @@ local function initComs()
     parallel.waitForAll(listenOnWireless, executeCommands)
 end
 
-local function main()
+local function initPeripherals()
     bufferChestWood = peripheral.wrap(bufferChestWoodName)
     bufferTurtleDump = peripheral.wrap(bufferTurtleDumpName)
     turtles = getAllTurtles()
-    print(textutils.serialise(turtles))
+end
+
+local function main()
+    initPeripherals()
     initComs()
 end
 

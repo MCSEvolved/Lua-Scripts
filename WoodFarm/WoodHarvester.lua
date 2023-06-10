@@ -8,25 +8,71 @@ local wirelessChannel = 10
 
 local wirelessModem = findWirelessModem()
 
-local function isInventoryEmpty()
-    for i=1, 16 do
-        local item = turtle.getItemDetail(i)
-            if item  then
-                return false
-            end
+local function waitForEmptyInventory()
+    while true do
+        local foundItem = false
+        for i=1, 16 do
+            local item = turtle.getItemDetail(i)
+                if item then
+                    foundItem = true
+                end
+        end
+        if not foundItem then
+            return
+        end
+        os.sleep(0.01)
     end
-    return true
+    
 end
 
-local function sendOverWireless(type, data)
-    local message = {
-        type = type,
-        origin = os.getComputerID(),
-        data = data
-    }
-    --print("SEND: "..textutils.serialise(message))
+local function waitForResponse()
+    local timer_id = os.startTimer(5)
+    print("WAITING FOR RESPONSE")
+    while true do
+        local event, side, channel, replyChannel, message, distance = os.pullEvent()
+        if event == "modem_message" then
+            if channel == wirelessChannel then
+                if message.type == "TASK_RECEIVED" and message.data == os.getComputerID() then
+                    print("MANAGER RECEIVED TASK")
+                    return true
+                end
+            end
+        elseif event == "timer" and side == timer_id then
+            print("MANAGER NOT RESPONDING")
+            return false
+        end
+        
+    end
+end
 
-    wirelessModem.transmit(wirelessChannel, wirelessChannel, message)
+
+
+
+local function sendOverWireless(type, data)
+    while true do
+        local message = {
+            type = type,
+            origin = os.getComputerID(),
+            data = data
+        }
+        print("SEND: "..textutils.serialise(message))
+        wirelessModem.transmit(wirelessChannel, wirelessChannel, message)
+        if waitForResponse() then
+            return
+        end
+    end
+    
+end
+
+local function retryMessageIfNoCompletion(type, data)
+    local timer_id = os.startTimer(5)
+    while true do
+        local event, id = os.pullEvent("timer")
+        if id == timer_id then
+            sendOverWireless(type, data)
+            timer_id = os.startTimer(10)
+        end
+    end
 end
 
 local function waitForFuel()
@@ -48,8 +94,10 @@ local function refuel()
         if amountCharcoal > 64 then
             amountCharcoal = 64
         end
-        sendOverWireless("REQUEST_FUEL", amountCharcoal)  
-        waitForFuel()      
+        sendOverWireless("REQUEST_FUEL", amountCharcoal)
+        parallel.waitForAny(waitForFuel, function ()
+            retryMessageIfNoCompletion("REQUEST_FUEL", amountCharcoal)
+        end)
         for i=1, 16, 1 do
             local item = turtle.getItemDetail(i)
             if item then
@@ -78,13 +126,12 @@ end
 
 local function emptyInventory()
     sendOverWireless("EMPTY_INVENTORY")
-    while not isInventoryEmpty() do
-        os.sleep(0.01)
-    end
+    parallel.waitForAny(waitForEmptyInventory, function ()
+        retryMessageIfNoCompletion("EMPTY_INVENTORY")
+    end)
 end
 
-local function getSaplings()
-    sendOverWireless("REQUEST_SAPLINGS")
+local function waitForSaplings()
     local amountSaplings = 0
     while true do
         for i=1, 16 do
@@ -93,14 +140,19 @@ local function getSaplings()
             if item and item.name == "minecraft:spruce_sapling" then
                 amountSaplings = amountSaplings + item.count
                 if amountSaplings > 23 then
-                    --sendOverWireless("ACTION_DONE", nil)
                     amountSaplings = 0
-                    print("DONE SAPLINGS")
                     return
                 end
             end
         end
     end
+end
+
+local function getSaplings()
+    sendOverWireless("REQUEST_SAPLINGS")
+    parallel.waitForAny(waitForSaplings, function ()
+        retryMessageIfNoCompletion("REQUEST_SAPLINGS")
+    end)
 end
 
 local function returnHome()

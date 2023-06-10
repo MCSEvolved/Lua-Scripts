@@ -1,10 +1,12 @@
 local bufferChestWood
 local bufferChestWoodName = "minecraft:chest_13"
 
-local tempInventory
-local tempInventoryName = "minecraft:barrel_0"
+local toStorage
+local toStorageName = "minecraft:barrel_0"
 
-local meBridge = peripheral.find("meBridge")
+local fromStorage
+local fromStorageName = "minecraft:barrel_2"
+
 
 local furnaces = {}
 
@@ -17,16 +19,29 @@ local function findFurnaces()
     print(#furnaces.." Furnaces Found")
 end
 
-local function pushToStorage(from, fromSlot, item)
-    tempInventory.pullItems(from, fromSlot)
-    meBridge.importItemFromPeripheral({name=item.name, count=item.count}, tempInventoryName)
+local function pushToStorage(from, fromSlot)
+    toStorage.pullItems(from, fromSlot)
+end
+
+local function getMeBridge()
+    local meBridge = peripheral.find("meBridge")
+    if meBridge then
+        return meBridge
+    else
+        print("ME OFFLINE, WAITING...")
+        while meBridge == nil do
+            os.sleep(0.01)
+        end
+        return meBridge
+    end
 end
 
 local function pullFromStorage(to, toSlot, item)
-    meBridge.exportItemToPeripheral({name=item.name, count=item.count}, tempInventoryName)
-    for i = 1, tempInventory.size() do
-        if tempInventory.getItemDetail(i) and tempInventory.getItemDetail(i).name == item.name then
-            local amountPushed = tempInventory.pushItems(to, i, item.count, toSlot)
+    getMeBridge().exportItemToPeripheral({name=item.name, count=item.count}, fromStorageName)
+    for i = 1, fromStorage.size() do
+        local detail = fromStorage.getItemDetail(i)
+        if detail and detail.name == item.name then
+            local amountPushed = fromStorage.pushItems(to, i, item.count, toSlot)
             if amountPushed < item.count then
                 item.count = item.count - amountPushed
             else
@@ -44,7 +59,7 @@ local function pushWoodToFurnaces()
             local detail = bufferChestWood.getItemDetail(i)
             while detail and detail.name == "minecraft:spruce_log" do
                 local furnace = furnaces[furnaceIndex]
-                print(furnaceIndex)
+                print("PUSHING TO FURNACE "..furnaceIndex)
                 if bufferChestWood.pushItems(furnace, i, 64, 1) < 10 then
                     if furnaceIndex < #furnaces then
                         furnaceIndex = furnaceIndex + 1
@@ -64,7 +79,7 @@ local function pullCharcoalFromFurnaces()
         for key, furnace in pairs(furnaces) do
             local detail = peripheral.wrap(furnace).getItemDetail(3)
             if detail then
-                pushToStorage(furnace, 3, detail)
+                pushToStorage(furnace, 3)
             end
         end
     end
@@ -86,10 +101,16 @@ local function pushFuelToFurnaces()
     end
 end
 
+local function initInventories()
+    toStorage = peripheral.wrap(toStorageName)
+    fromStorage = peripheral.wrap(fromStorageName)
+
+    bufferChestWood = peripheral.wrap(bufferChestWoodName)
+end
+
 local function main()
     findFurnaces()
-    tempInventory = peripheral.wrap(tempInventoryName)
-    bufferChestWood = peripheral.wrap(bufferChestWoodName)
+    initInventories()
     parallel.waitForAll(pushWoodToFurnaces, pushFuelToFurnaces, pullCharcoalFromFurnaces)
 end
 
