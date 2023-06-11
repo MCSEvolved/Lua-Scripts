@@ -3,3 +3,5 @@ void: 0
 wired communication: 1-5
 
 treefarm internal: 10
+
+tracker: 20
