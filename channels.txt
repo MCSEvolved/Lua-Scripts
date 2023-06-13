@@ -5,3 +5,5 @@ wired communication: 1-5
 treefarm internal: 10
 
 pumpkinFarm communication: 20
+
+tracker: 20

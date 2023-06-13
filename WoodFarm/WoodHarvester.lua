@@ -1,32 +1,96 @@
+-- local function findWirelessModem()
+--     return peripheral.find("modem", function (n,o)
+--         return o.isWireless()
+--     end)
+-- end
+
 local function findWirelessModem()
-    return peripheral.find("modem", function (n,o)
-        return o.isWireless()
-    end)
+    local left = peripheral.wrap("left")
+    if peripheral.getType(left) == "modem" then
+        if left.isWireless() then
+            return left
+        end
+    end
+
+    local right = peripheral.wrap("right")
+    if peripheral.getType(right) == "modem" then
+        if right.isWireless() then
+            return right
+        end
+    end
+    
+    return nil
 end
 
 local wirelessChannel = 10
 
 local wirelessModem = findWirelessModem()
 
-local function isInventoryEmpty()
-    for i=1, 16 do
-        local item = turtle.getItemDetail(i)
-            if item  then
-                return false
-            end
+local function waitForEmptyInventory()
+    while true do
+        local foundItem = false
+        for i=1, 16 do
+            local item = turtle.getItemDetail(i)
+                if item then
+                    foundItem = true
+                end
+        end
+        if not foundItem then
+            return
+        end
+        os.sleep(0.01)
     end
-    return true
+    
 end
 
-local function sendOverWireless(type, data)
-    local message = {
-        type = type,
-        origin = os.getComputerID(),
-        data = data
-    }
-    --print("SEND: "..textutils.serialise(message))
+local function waitForResponse()
+    local timer_id = os.startTimer(5)
+    print("WAITING FOR RESPONSE")
+    while true do
+        local event, side, channel, replyChannel, message, distance = os.pullEvent()
+        if event == "modem_message" then
+            if channel == wirelessChannel then
+                if message.type == "TASK_RECEIVED" and message.data == os.getComputerID() then
+                    print("MANAGER RECEIVED TASK")
+                    return true
+                end
+            end
+        elseif event == "timer" and side == timer_id then
+            print("MANAGER NOT RESPONDING")
+            return false
+        end
+        
+    end
+end
 
-    wirelessModem.transmit(wirelessChannel, wirelessChannel, message)
+
+
+
+local function sendOverWireless(type, data)
+    while true do
+        local message = {
+            type = type,
+            origin = os.getComputerID(),
+            data = data
+        }
+        print("SEND: "..textutils.serialise(message))
+        wirelessModem.transmit(wirelessChannel, wirelessChannel, message)
+        if waitForResponse() then
+            return
+        end
+    end
+    
+end
+
+local function retryMessageIfNoCompletion(type, data)
+    local timer_id = os.startTimer(5)
+    while true do
+        local event, id = os.pullEvent("timer")
+        if id == timer_id then
+            sendOverWireless(type, data)
+            timer_id = os.startTimer(10)
+        end
+    end
 end
 
 local function waitForFuel()
@@ -43,23 +107,30 @@ end
 
 local function refuel()
     local amountCharcoal = math.floor((turtle.getFuelLimit() - turtle.getFuelLevel())/80)
-    while amountCharcoal > 0 do
-        print(amountCharcoal)
-        if amountCharcoal > 64 then
-            amountCharcoal = 64
-        end
-        sendOverWireless("REQUEST_FUEL", amountCharcoal)  
-        waitForFuel()      
-        for i=1, 16, 1 do
-            local item = turtle.getItemDetail(i)
-            if item then
-                turtle.select(i)
-                turtle.refuel()
-                print(turtle.getFuelLevel())
+    print(amountCharcoal)
+    os.sleep(5)
+    if amountCharcoal > 64 then
+        while amountCharcoal > 64 do
+            print(amountCharcoal)
+            if amountCharcoal > 64 then
+                amountCharcoal = 64
             end
+            sendOverWireless("REQUEST_FUEL", amountCharcoal)
+            parallel.waitForAny(waitForFuel, function ()
+                retryMessageIfNoCompletion("REQUEST_FUEL", amountCharcoal)
+            end)
+            for i=1, 16, 1 do
+                local item = turtle.getItemDetail(i)
+                if item then
+                    turtle.select(i)
+                    turtle.refuel()
+                    print(turtle.getFuelLevel())
+                end
+            end
+            amountCharcoal = math.floor((turtle.getFuelLimit() - turtle.getFuelLevel())/80)
         end
-        amountCharcoal = math.floor((turtle.getFuelLimit() - turtle.getFuelLevel())/80)
     end
+    
 
     return
 
@@ -78,13 +149,12 @@ end
 
 local function emptyInventory()
     sendOverWireless("EMPTY_INVENTORY")
-    while not isInventoryEmpty() do
-        os.sleep(0.01)
-    end
+    parallel.waitForAny(waitForEmptyInventory, function ()
+        retryMessageIfNoCompletion("EMPTY_INVENTORY")
+    end)
 end
 
-local function getSaplings()
-    sendOverWireless("REQUEST_SAPLINGS")
+local function waitForSaplings()
     local amountSaplings = 0
     while true do
         for i=1, 16 do
@@ -93,14 +163,19 @@ local function getSaplings()
             if item and item.name == "minecraft:spruce_sapling" then
                 amountSaplings = amountSaplings + item.count
                 if amountSaplings > 23 then
-                    --sendOverWireless("ACTION_DONE", nil)
                     amountSaplings = 0
-                    print("DONE SAPLINGS")
                     return
                 end
             end
         end
     end
+end
+
+local function getSaplings()
+    sendOverWireless("REQUEST_SAPLINGS")
+    parallel.waitForAny(waitForSaplings, function ()
+        retryMessageIfNoCompletion("REQUEST_SAPLINGS")
+    end)
 end
 
 local function returnHome()
@@ -231,9 +306,10 @@ local function isAtStart()
     turtle.turnLeft()
     turtle.turnLeft()
     local success, block = turtle.inspect()
-        turtle.turnLeft()
-        turtle.turnLeft()
-    return success and block.name == "computercraft:wired_modem_full"
+    turtle.turnLeft()
+    turtle.turnLeft()
+    local isAtStart = success and block.name == "computercraft:wired_modem_full"
+    return isAtStart
 end
 
 local function initComs()
@@ -241,11 +317,13 @@ local function initComs()
     if not wirelessModem.isOpen(wirelessChannel) then
         error("Couldn't Establish Wireless Connection")
     end
+    print(wirelessModem.isOpen(wirelessChannel))
 end
 
 local function main()
     initComs()
     if isAtStart() then
+        print("Is at start")
         while true do
             emptyInventory()
             refuel()
