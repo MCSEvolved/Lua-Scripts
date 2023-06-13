@@ -14,7 +14,7 @@
         "term",
         "textutils",
         "keys",
-        "sleep"
+        "sleep",
     ],
-    "mcs-filesyncer.enabled": true
+    "mcs-filesyncer.enabled": true,
 }
