@@ -45,6 +45,9 @@ local function calculateAmountVC()
     end
 
     local amountVC = requiredPower/80
+    if amountVC > #vibrationChambers then
+        return #vibrationChambers
+    end
     return amountVC
 end
 
@@ -65,7 +68,7 @@ local function getStorageAmounts()
     return curr, max
 end
 
-local function calculateAmountVCForStorage()
+local function needsReplenishing()
     local max, maxErr = meBridge.getMaxEnergyStorage()
     local curr, currErr = meBridge.getEnergyStorage()
     if max == nil or curr == nil or max == 0 then
@@ -73,7 +76,7 @@ local function calculateAmountVCForStorage()
             print("ME Offline")
         end
         meIsOnline = false
-        return
+        return 0
     end
     max = max*2
     curr = curr*2
@@ -86,10 +89,9 @@ local function calculateAmountVCForStorage()
     amountVC = math.floor(amountVC)
     if amountVC > 1000 then
         isReplenishing = true
-        return 3
     end
     isReplenishing = false
-    return 0
+    return isReplenishing
 end
 
 local function pullFromStorage(amount, inventory)
@@ -104,8 +106,11 @@ local function pullFromStorage(amount, inventory)
     meIsOnline = true
 end
 
-local function pushToVC(requiredAmountVC)
+local function pushToVC(requiredAmountVC, needsReplenishing)
     local amountVC = math.ceil(requiredAmountVC) + amountHeadroom
+    if needsReplenishing then
+        amountVC = #vibrationChambers
+    end
     for i=1, amountVC, 1 do
         if i > #vibrationChambers then
             return
@@ -144,14 +149,27 @@ end
 
 local function updateMonitor()
     while true do
+
+        local powerDemand = math.floor(getPowerDemand()+0.5)
+        local reactorGeneration = math.floor(getReactorGeneration()+0.5)
+
+        local activeVCs = calculateAmountVC() + amountHeadroom
+        if isReplenishing then
+            activeVCs = #vibrationChambers
+        end
+        local curr, max = getStorageAmounts()
+        curr = curr/1000000
+        max = max/1000000
+
         monitor.setCursorPos(1, 1)
         writeLineToMonitor("[ME Usage]")
-        writeLineToMonitor(math.floor(getPowerDemand()+0.5).." RF/t")
+        writeLineToMonitor(powerDemand.." RF/t")
         writeLineToMonitor("----------")
+
         writeLineToMonitor("[Reactor Generation]")
-        writeLineToMonitor(math.floor(getReactorGeneration()+0.5).." RF/t")
+        writeLineToMonitor(reactorGeneration.." RF/t")
         writeLineToMonitor("----------")
-        local activeVCs = math.ceil((calculateAmountVC() + amountHeadroom) + (calculateAmountVCForStorage()))
+        
         if activeVCs >= #vibrationChambers then
             monitor.setTextColor(colors.red)
         elseif activeVCs > (#vibrationChambers*0.75) then
@@ -161,11 +179,11 @@ local function updateMonitor()
         end
         writeLineToMonitor("[Coal Usage]")
         monitor.setTextColor(colors.white)
-        writeLineToMonitor("aprox. "..math.ceil((calculateAmountVC()+0.5 + amountHeadroom)*5.4 + (calculateAmountVCForStorage()+0.5)*5.4).." Coal/min")
+        writeLineToMonitor("aprox. "..(math.ceil((activeVCs*5.4))).." Coal/min")
         writeLineToMonitor("----------")
-        local curr, max = getStorageAmounts()
-        curr = curr/1000000
-        max = max/1000000
+
+        
+        
         if isReplenishing then
             monitor.setTextColor(colors.orange)
         else
@@ -174,6 +192,7 @@ local function updateMonitor()
         writeLineToMonitor("[Energy Storage]")
         monitor.setTextColor(colors.white)
         writeLineToMonitor((math.ceil(curr*100)/100).." MRF / "..(math.ceil(max*100)/100).." MRF")
+        writeLineToMonitor("+"..(math.ceil((activeVCs - calculateAmountVC())*80)).." RF/t")
         os.sleep(0.5)
     end
 end
@@ -181,9 +200,8 @@ end
 local function balanceVC()
     findVibrationChambers()
     while true do
-        pushToVC(calculateAmountVC() + calculateAmountVCForStorage())
+        pushToVC(calculateAmountVC(), needsReplenishing())
         waitForEmpty()
-       --os.sleep(burnTime)
     end
 end
 
