@@ -1,7 +1,25 @@
+-- local function findWirelessModem()
+--     return peripheral.find("modem", function (n,o)
+--         return o.isWireless()
+--     end)
+-- end
+
 local function findWirelessModem()
-    return peripheral.find("modem", function (n,o)
-        return o.isWireless()
-    end)
+    local left = peripheral.wrap("left")
+    if peripheral.getType(left) == "modem" then
+        if left.isWireless() then
+            return left
+        end
+    end
+
+    local right = peripheral.wrap("right")
+    if peripheral.getType(right) == "modem" then
+        if right.isWireless() then
+            return right
+        end
+    end
+    
+    return nil
 end
 
 local wirelessChannel = 10
@@ -288,9 +306,10 @@ local function isAtStart()
     turtle.turnLeft()
     turtle.turnLeft()
     local success, block = turtle.inspect()
-        turtle.turnLeft()
-        turtle.turnLeft()
-    return success and block.name == "computercraft:wired_modem_full"
+    turtle.turnLeft()
+    turtle.turnLeft()
+    local isAtStart = success and block.name == "computercraft:wired_modem_full"
+    return isAtStart
 end
 
 local function initComs()
@@ -298,11 +317,13 @@ local function initComs()
     if not wirelessModem.isOpen(wirelessChannel) then
         error("Couldn't Establish Wireless Connection")
     end
+    print(wirelessModem.isOpen(wirelessChannel))
 end
 
 local function main()
     initComs()
     if isAtStart() then
+        print("Is at start")
         while true do
             emptyInventory()
             refuel()

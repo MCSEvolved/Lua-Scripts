@@ -5,6 +5,7 @@ local function findWirelessModem()
 end
 
 
+
 local function arrayContainsElement (tab, val)
     for index, value in ipairs(tab) do
         if value == val then
@@ -26,10 +27,10 @@ local function getAllTurtles()
 end
 
 local bufferChestWood
-local bufferChestWoodName = "minecraft:chest_13"
+local bufferChestWoodName = "minecraft:chest_30"
 
 local bufferTurtleDump
-local bufferTurtleDumpName = "minecraft:barrel_1"
+local bufferTurtleDumpName = "minecraft:barrel_42"
 
 local wirelessChannel = 10
 
@@ -191,6 +192,7 @@ end
 
 local function initComs()
     wirelessModem.open(wirelessChannel)
+    print(peripheral.getName(wirelessModem))
     if not wirelessModem.isOpen(wirelessChannel) then
         error("Couldn't Establish Wireless Connection")
     end

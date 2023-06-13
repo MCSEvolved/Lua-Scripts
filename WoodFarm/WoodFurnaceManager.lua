@@ -1,11 +1,11 @@
 local bufferChestWood
-local bufferChestWoodName = "minecraft:chest_13"
+local bufferChestWoodName = "minecraft:chest_29"
 
 local toStorage
-local toStorageName = "minecraft:barrel_0"
+local toStorageName = "minecraft:barrel_44"
 
 local fromStorage
-local fromStorageName = "minecraft:barrel_2"
+local fromStorageName = "minecraft:barrel_43"
 
 local production = 0
 local monitor = peripheral.find("monitor")
@@ -63,14 +63,13 @@ local function pushWoodToFurnaces()
             while detail and detail.name == "minecraft:spruce_log" do
                 local furnace = furnaces[furnaceIndex]
                 print("PUSHING TO FURNACE "..furnaceIndex)
-                if bufferChestWood.pushItems(furnace, i, 64, 1) < 10 then
-                    if furnaceIndex < #furnaces then
-                        furnaceIndex = furnaceIndex + 1
-                    else
-                        furnaceIndex = 1
-                    end
-                    
+                bufferChestWood.pushItems(furnace, i, 8, 1)
+                if furnaceIndex < #furnaces then
+                    furnaceIndex = furnaceIndex + 1
+                else
+                    furnaceIndex = 1
                 end
+                    
                 detail = bufferChestWood.getItemDetail(i)
             end
         end
