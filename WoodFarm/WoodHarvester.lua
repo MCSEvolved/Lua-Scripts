@@ -89,25 +89,30 @@ end
 
 local function refuel()
     local amountCharcoal = math.floor((turtle.getFuelLimit() - turtle.getFuelLevel())/80)
-    while amountCharcoal > 0 do
-        print(amountCharcoal)
-        if amountCharcoal > 64 then
-            amountCharcoal = 64
-        end
-        sendOverWireless("REQUEST_FUEL", amountCharcoal)
-        parallel.waitForAny(waitForFuel, function ()
-            retryMessageIfNoCompletion("REQUEST_FUEL", amountCharcoal)
-        end)
-        for i=1, 16, 1 do
-            local item = turtle.getItemDetail(i)
-            if item then
-                turtle.select(i)
-                turtle.refuel()
-                print(turtle.getFuelLevel())
+    print(amountCharcoal)
+    os.sleep(5)
+    if amountCharcoal > 64 then
+        while amountCharcoal > 64 do
+            print(amountCharcoal)
+            if amountCharcoal > 64 then
+                amountCharcoal = 64
             end
+            sendOverWireless("REQUEST_FUEL", amountCharcoal)
+            parallel.waitForAny(waitForFuel, function ()
+                retryMessageIfNoCompletion("REQUEST_FUEL", amountCharcoal)
+            end)
+            for i=1, 16, 1 do
+                local item = turtle.getItemDetail(i)
+                if item then
+                    turtle.select(i)
+                    turtle.refuel()
+                    print(turtle.getFuelLevel())
+                end
+            end
+            amountCharcoal = math.floor((turtle.getFuelLimit() - turtle.getFuelLevel())/80)
         end
-        amountCharcoal = math.floor((turtle.getFuelLimit() - turtle.getFuelLevel())/80)
     end
+    
 
     return
 

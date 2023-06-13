@@ -90,12 +90,12 @@ local function emptyInventoryOfTurtle(turtleId)
             print(i.." TO WOOD")
             if bufferChestWood.pullItems(bufferTurtleDumpName, 1) < item.count then
                 print("Buffer Chest is full")
-                return false
+                getMeBridge().importItemFromPeripheral({name=item.name}, bufferTurtleDumpName)
             end
         else
             if item then
                 print(i.." TO ME")
-                local amountPulled = getMeBridge().importItemFromPeripheral({name=item.name, count=item.count}, bufferTurtleDumpName)
+                local amountPulled = getMeBridge().importItemFromPeripheral({name=item.name}, bufferTurtleDumpName)
                 -- if  amountPulled < item.count then
                 --     print("error2")
                 --     return false

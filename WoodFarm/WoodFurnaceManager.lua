@@ -7,6 +7,9 @@ local toStorageName = "minecraft:barrel_0"
 local fromStorage
 local fromStorageName = "minecraft:barrel_2"
 
+local production = 0
+local monitor = peripheral.find("monitor")
+
 
 local furnaces = {}
 
@@ -20,7 +23,7 @@ local function findFurnaces()
 end
 
 local function pushToStorage(from, fromSlot)
-    toStorage.pullItems(from, fromSlot)
+    production = production + toStorage.pullItems(from, fromSlot)
 end
 
 local function getMeBridge()
@@ -101,6 +104,23 @@ local function pushFuelToFurnaces()
     end
 end
 
+local function writeLineToMonitor(message)
+    monitor.clearLine()
+    monitor.write(message)
+    local x, y = monitor.getCursorPos()
+    monitor.setCursorPos(1, y+1)
+end
+
+local function updateMonitor()
+    while true do
+        monitor.setCursorPos(1, 1)
+        writeLineToMonitor(production)
+        writeLineToMonitor("Coal/min")
+        production = 0
+        os.sleep(60)
+    end
+end
+
 local function initInventories()
     toStorage = peripheral.wrap(toStorageName)
     fromStorage = peripheral.wrap(fromStorageName)
@@ -111,7 +131,7 @@ end
 local function main()
     findFurnaces()
     initInventories()
-    parallel.waitForAll(pushWoodToFurnaces, pushFuelToFurnaces, pullCharcoalFromFurnaces)
+    parallel.waitForAll(pushWoodToFurnaces, pushFuelToFurnaces, pullCharcoalFromFurnaces, updateMonitor)
 end
 
 main()
