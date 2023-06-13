@@ -6,7 +6,7 @@ local trade = {
         count = 11,
     },
     name = "item.minecraft.enchanted_book",
-    enchant = "enchantment.minecraft.depth_strider 3",
+    enchant = "enchantment.minecraft.sweeping 3",
 }
 
 local function initialize()
