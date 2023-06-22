@@ -7,3 +7,5 @@ treefarm internal: 10
 pumpkinFarm communication: 20
 
 tracker: 20
+
+miner: 30
