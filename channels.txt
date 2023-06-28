@@ -6,6 +6,10 @@ treefarm internal: 10
 
 pumpkinFarm communication: 20
 
-tracker: 30
+
+
+miner: 30
+
+tracker: 40
 
 request token: 443
