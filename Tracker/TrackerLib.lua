@@ -1,3 +1,4 @@
+local isTurtle = false
 local wirelessModem = peripheral.find("modem", function (n,o)
     return o.isWireless()
 end)
@@ -31,13 +32,13 @@ local isEnabled = false
 local x, y, z, facing = nil, nil, nil, nil
 local rotationDefined = false
 local dimension = "Unknown"
-local isTurtle = false
+
 local computerId = os.getComputerID()
 local label = "NO_LABEL"
 local device = getDeviceType()
 local status = "Working"
 local systemId = 0
-local wirelessChannel = 20
+local wirelessChannel = 40
 
 
 local printFunc = print
@@ -63,7 +64,7 @@ local function sendOverWireless(type, content)
 end
 
 local function validateMessage(message)
-    return message.type and message.source and message.content and message.identifier
+    return message.type and message.source and message.content and message.sourceId
 end
 
 local function sendMessage(content, messageType, metaData)
@@ -87,15 +88,15 @@ local function sendMessage(content, messageType, metaData)
             source = source,
             content = content,
             metaData = metaData,
-            identifier = tostring(computerId)
+            sourceId = tostring(computerId)
         }
     else
         message = {
             type = messageType,
             source = source,
             content = content,
-            metaData = nil,
-            identifier = tostring(computerId)
+            metaData = {},
+            sourceId = tostring(computerId)
         }
     end
     
@@ -117,14 +118,14 @@ local function sendInfo()
         fuelLimit = turtle.getFuelLimit()
     end
     local information = {
-        id = computerId,
-        label = computerLabel,
-        systemId = systemId,
-        status = status,
-        device = device,
-        fuelLevel = fuelLevel,
-        fuelLimit = fuelLimit,
-        hasModem = wirelessModem ~= nil
+        Id = computerId,
+        Label = computerLabel,
+        SystemId = systemId,
+        Status = status,
+        Device = device,
+        FuelLevel = fuelLevel,
+        FuelLimit = fuelLimit,
+        HasModem = wirelessModem ~= nil
     }
     --wirelessModem.transmit(wirelessChannel, wirelessChannel, information)
     sendOverWireless("COMPUTER", information)
@@ -208,10 +209,10 @@ end
 function SetCustomStatus(customStatus)
     changeStatus(customStatus)
 end
-
+local test = 0
 local function sendLocation()
     local location = {
-        computerId = tostring(computerId),
+        computerId = computerId,
         coordinates = {
             x = x,
             y = y,
@@ -219,6 +220,9 @@ local function sendLocation()
         },
         dimension = dimension
     }
+    test = test + 1
+    print("sending location")
+    print(test)
     sendOverWireless("LOCATION", location)
 end
 
@@ -406,7 +410,7 @@ function InitTracker(main, _systemId)
     end
 
     SendDebug("Turtle has started up and is online")
-    parallel.waitForAll(bind(main), bind(initInfo))
+    parallel.waitForAny(bind(main), bind(initInfo))
 end
 
 
