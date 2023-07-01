@@ -81,14 +81,12 @@ local function needsReplenishing()
     max = max*2
     curr = curr*2
     meIsOnline = true
-    local requiredPower = max - curr
-    if requiredPower < 0 then
-        requiredPower = 0
-    end
-    local amountVC = requiredPower/80
-    amountVC = math.floor(amountVC)
-    if amountVC > 1000 then
+
+    local requiredPercentage = 100 - ((curr/max) * 100)
+
+    if requiredPercentage > 10 then
         isReplenishing = true
+        return isReplenishing
     end
     isReplenishing = false
     return isReplenishing
@@ -177,9 +175,9 @@ local function updateMonitor()
         else
             monitor.setTextColor(colors.green)
         end
-        writeLineToMonitor("[Coal Usage]")
+        writeLineToMonitor("[approx. Coal Usage]")
         monitor.setTextColor(colors.white)
-        writeLineToMonitor("aprox. "..(math.ceil((activeVCs*5.4))).." Coal/min")
+        writeLineToMonitor((math.ceil((activeVCs*5.4))).." Coal/min - "..math.ceil((activeVCs)).."/"..#vibrationChambers.." Chambers")
         writeLineToMonitor("----------")
 
         
