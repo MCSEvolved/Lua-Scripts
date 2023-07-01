@@ -1,8 +1,11 @@
 local me = peripheral.find("meBridge")
-local emeraldOutputBarrelName = "minecraft:barrel_39"
+local emeraldOutputBarrelName = "minecraft:barrel_61"
 local tradingInterface = peripheral.find("trading_interface")
+local modem = nil
 local fuelBarrelNames = {}
 local outputBarrelNames = {}
+
+local emeraldsProduced = 0
 
 ---Log info to file
 ---@param text string
@@ -12,6 +15,7 @@ local function logInfo(text)
     if type(text) ~= "string" then
         return false
     end
+    term.setTextColor(colors.white)
     print("[INFO] ".. text)
     logFile.writeLine("[INFO] " .. text)
     logFile.close()
@@ -26,6 +30,7 @@ local function logWarning(text)
     if type(text) ~= "string" then
         return false
     end
+    term.setTextColor(colors.yellow)
     print("[WARNING] ".. text)
     logFile.writeLine("[WARNING] " .. text)
     logFile.close()
@@ -41,6 +46,7 @@ local function logError(text, doCrash)
     if type(text) ~= "string" then
         return false
     end
+    term.setTextColor(colors.red)
     print("[ERROR] ".. text)
     logFile.writeLine("[ERROR] " .. text)
     logFile.close()
@@ -48,6 +54,15 @@ local function logError(text, doCrash)
         return true
     end
     error(text)
+end
+
+local function findWirelessModem()
+    local names  = peripheral.getNames()
+    for i = 1, #names do
+        if peripheral.getType(names[i]) == "modem" and peripheral.call(names[i], "isWireless") then
+            return peripheral.wrap(names[i])
+        end
+    end
 end
 
 local function wipeLogs()
@@ -69,6 +84,12 @@ end
 
 local function initialize()
     wipeLogs()
+
+    modem = findWirelessModem()
+
+    if not modem then
+        logError("Could not find wireless modem", true)
+    end
 
     if not me then
         logError("Could not find ME bridge", true)
@@ -124,23 +145,34 @@ local function pushEmeraldsToMEStorage()
     while pushToStorage({name = "minecraft:emerald"}, emeraldOutputBarrelName) do end
 end
 
+local function tradePumpkinsToEmeralds(outputBarrelName)
+    local tradeID = 3
+
+    local tradeSuccess = true
+    local function tradeWrapper()
+        tradeSuccess = tradingInterface.trade(outputBarrelName, emeraldOutputBarrelName, tradeID)
+        if tradeSuccess then
+            emeraldsProduced = emeraldsProduced + 1
+        end
+    end
+
+    while true do
+        local success, error = pcall(tradeWrapper)
+        if not tradeSuccess then return true end
+        if not success and type(error) == "string" and string.find(error, "destination inventory full") then
+            pushEmeraldsToMEStorage()
+        elseif not success then
+            logError("Error while trading: ".. error, true)
+        end
+        logInfo("Traded ".. outputBarrelName)
+        sleep(0.1)
+    end
+end
 
 local function tradeOutputBarrels()
     logInfo("Trading output barrels")
-    local tradeID = 3
     for i = 1, #outputBarrelNames do
-        while tradingInterface.trade(outputBarrelNames[i], emeraldOutputBarrelName, tradeID) do
-            local file = fs.open("tradeCount.txt", "r")
-            if file then
-                local count = file.read()
-                file.close()
-                count = count + 1
-                file = fs.open("tradeCount.txt", "w")
-                file.flush()
-                file.write(count)
-                file.close()
-            end
-        end
+        tradePumpkinsToEmeralds(outputBarrelNames[i])
     end
 end
 
@@ -151,14 +183,27 @@ local function fillFuelBarrels()
     end
 end
 
+-- Print pumpkins produced every 60 minutes
+local function reportData()
+    while true do
+        sleep(3600)
+        logInfo("Reporting production data")
+        local transmissionData = {sender="MANAGER", type="PRODUCTION_DATA", data = { time = textutils.formatTime(os.time("local")), produced = emeraldsProduced }}
+        modem.transmit(20, 20, transmissionData)
+        emeraldsProduced = 0 -- Reset emeralds produced
+    end
+end
+
 local function main()
     logInfo("Running main")
     while true do
-        tradeOutputBarrels()
         pushEmeraldsToMEStorage()
+        tradeOutputBarrels()
         fillFuelBarrels()
+        logInfo("Sleeping for 10 seconds")
+        sleep(10)
     end
 end
 
 initialize()
-main()
+parallel.waitForAll(main, reportData)
