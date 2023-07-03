@@ -227,6 +227,10 @@ local function dropPumpkinsInOutput()
                 logWarning("Failed to drop items in barrel")
                 return false
             end
+            if turtle.getItemCount(i) > 0 then
+                logWarning("Failed to drop all items from slot in barrel")
+                return false
+            end
         elseif type(item) == "table" then
             logWarning("Found item item in inventory: " .. item.name)
         end
