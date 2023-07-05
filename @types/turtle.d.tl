@@ -1,0 +1,52 @@
+local type side = enum 
+    "left"
+    "right"
+end
+
+global record Turtle
+    craft: function(limit: integer|nil)
+    forward: function()
+    back: function()
+    up: function()
+    down: function()
+    turnLeft: function()
+    turnRight: function()
+    dig: function(side: side|nil)
+    digUp: function(side: side|nil)
+    digDown: function(side: side|nil)
+    place: function(text: string|nil)
+    placeUp: function(text: string|nil)
+    placeDown: function(text: string|nil)
+    drop: function(count: integer|nil)
+    dropUp: function(count: integer|nil)
+    dropDown: function(count: integer|nil)
+    select: function(slot: integer)
+    getItemCount: function(slot: integer|nil)
+    getItemSpace: function(slot: integer|nil)
+    detect: function()
+    detectUp: function()
+    detectDown: function()
+    compare: function()
+    compareUp: function()
+    compareDown: function()
+    attack: function(side: side|nil)
+    attackUp: function(side: side|nil)
+    attackDown: function(side: side|nil)
+    suck: function(count: integer|nil)
+    suckUp: function(count: integer|nil)
+    suckDown: function(count: integer|nil)
+    getFuelLevel: function()
+    refuel: function(count: integer|nil)
+    compareTo: function(slot: integer)
+    transferTo: function(slot: integer, count: integer|nil)
+    getSelectedSlot: function()
+    getFuelLimit: function()
+    equipLeft: function()
+    equipRight: function()
+    inspect: function()
+    inspectUp: function()
+    inspectDown: function()
+    getItemDetail: function(slot: integer|nil, detailed: boolean|nil)
+end
+
+global turtle: Turtle
