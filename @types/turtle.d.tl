@@ -3,50 +3,50 @@ local type side = enum
     "right"
 end
 
-global record Turtle
-    craft: function(limit: integer|nil)
-    forward: function()
-    back: function()
-    up: function()
-    down: function()
-    turnLeft: function()
-    turnRight: function()
-    dig: function(side: side|nil)
-    digUp: function(side: side|nil)
-    digDown: function(side: side|nil)
-    place: function(text: string|nil)
-    placeUp: function(text: string|nil)
-    placeDown: function(text: string|nil)
-    drop: function(count: integer|nil)
-    dropUp: function(count: integer|nil)
-    dropDown: function(count: integer|nil)
-    select: function(slot: integer)
-    getItemCount: function(slot: integer|nil)
-    getItemSpace: function(slot: integer|nil)
-    detect: function()
-    detectUp: function()
-    detectDown: function()
-    compare: function()
-    compareUp: function()
-    compareDown: function()
-    attack: function(side: side|nil)
-    attackUp: function(side: side|nil)
-    attackDown: function(side: side|nil)
-    suck: function(count: integer|nil)
-    suckUp: function(count: integer|nil)
-    suckDown: function(count: integer|nil)
-    getFuelLevel: function()
-    refuel: function(count: integer|nil)
-    compareTo: function(slot: integer)
-    transferTo: function(slot: integer, count: integer|nil)
-    getSelectedSlot: function()
-    getFuelLimit: function()
-    equipLeft: function()
-    equipRight: function()
-    inspect: function()
-    inspectUp: function()
-    inspectDown: function()
-    getItemDetail: function(slot: integer|nil, detailed: boolean|nil)
+local record Turtle
+    craft: function(limit: integer|nil): boolean, string|nil
+    forward: function() : boolean, string|nil
+    back: function() : boolean, string|nil
+    up: function() : boolean, string|nil
+    down: function() : boolean, string|nil
+    turnLeft: function() : boolean, string|nil
+    turnRight: function() : boolean, string|nil
+    dig: function(side: side|nil) : boolean, string|nil
+    digUp: function(side: side|nil) : boolean, string|nil
+    digDown: function(side: side|nil) : boolean, string|nil
+    place: function(text: string|nil) : boolean, string|nil
+    placeUp: function(text: string|nil) : boolean, string|nil
+    placeDown: function(text: string|nil) : boolean, string|nil
+    drop: function(count: integer|nil) : boolean, string|nil
+    dropUp: function(count: integer|nil) : boolean, string|nil
+    dropDown: function(count: integer|nil) : boolean, string|nil
+    select: function(slot: integer): boolean
+    getItemCount: function(slot: integer|nil): integer
+    getItemSpace: function(slot: integer|nil): integer
+    detect: function(): boolean
+    detectUp: function(): boolean
+    detectDown: function(): boolean
+    compare: function(): boolean
+    compareUp: function(): boolean
+    compareDown: function(): boolean
+    attack: function(side: side|nil): boolean, string|nil
+    attackUp: function(side: side|nil): boolean, string|nil
+    attackDown: function(side: side|nil): boolean, string|nil
+    suck: function(count: integer|nil): boolean, string|nil
+    suckUp: function(count: integer|nil): boolean, string|nil
+    suckDown: function(count: integer|nil): boolean, string|nil
+    getFuelLevel: function(): number
+    refuel: function(count: integer|nil): boolean, string|nil
+    compareTo: function(slot: integer): boolean
+    transferTo: function(slot: integer, count: integer|nil): boolean
+    getSelectedSlot: function(): number
+    getFuelLimit: function(): number
+    equipLeft: function(): boolean, string|nil
+    equipRight: function(): boolean, string|nil
+    inspect: function(): boolean, table|string
+    inspectUp: function(): boolean, table|string
+    inspectDown: function(): boolean, table|string
+    getItemDetail: function(slot: integer|nil, detailed: boolean|nil): table|nil
 end
 
-global turtle: Turtle
+return Turtle
