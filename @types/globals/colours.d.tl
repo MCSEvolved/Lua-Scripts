@@ -1,4 +1,4 @@
-local record colors
+local record Colours
     white: integer
     orange: integer
     magenta: integer
@@ -6,8 +6,8 @@ local record colors
     yellow: integer
     lime: integer
     pink: integer
-    gray: integer
-    lightGray: integer
+    grey: integer
+    lightGrey: integer
     cyan: integer
     purple: integer
     blue: integer
@@ -23,3 +23,5 @@ local record colors
     toBlit: function(color: integer): string
     fromBlit: function(hex: string): integer
 end
+
+return Colours
