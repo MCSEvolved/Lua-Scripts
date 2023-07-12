@@ -37,14 +37,8 @@ end
 local function sendMessageOverHTTP(message)
     local url = httpUrl.."/message/new"
     local token = getToken()
-    local body = textutils.serialiseJSON({
-        messageType=message.type,
-        messageSource=message.source,
-        content=message.content,
-        metaData=message.metaData,
-        identifier=message.identifier
-    })
-    local headers = {["Authorization"]=token}
+    local body = textutils.serialiseJSON(message)
+    local headers = {["Authorization"]=token, ["Content-Type"]="application/json"}
 
     local response, err, failResponse = http.post(url, body, headers)
     if failResponse and failResponse.getResponseCode() == 401 then
@@ -52,7 +46,8 @@ local function sendMessageOverHTTP(message)
         sleep(1)
         sendMessageOverHTTP(message)
     elseif failResponse then
-        print(failResponse.readAll())
+        --print()
+        print(failResponse.getResponseCode()..failResponse.readAll())
     end
 end
 
@@ -75,81 +70,78 @@ local function sendMessageOverWs(target, message)
         return false
     end
 end
---"..arguments.."
 
 
--- local function validateMessage(message)
---     return message.type and message.source and message.content and message.identifier
--- end
+local function validateMessage(message)
+    return message.type and message.source and message.content and message.sourceId
+end
 
--- local function sendMessage(content, messageType, metaData)
---     local message
+local function sendMessage(content, messageType, metaData)
+    local message
     
---     if metaData ~= nil then
---         metaData = {
---             metaData = metaData
---         }
+    if metaData ~= nil then
+        metaData = {
+            metaData = metaData
+        }
         
---         message = {
---             type = messageType,
---             source = "Service",
---             content = content,
---             metaData = metaData,
---             identifier = "Tracker"
---         }
---     else
---         message = {
---             type = messageType,
---             source = "Service",
---             content = content,
---             metaData = nil,
---             identifier = "Tracker"
---         }
---     end
+        message = {
+            type = messageType,
+            source = "Service",
+            content = content,
+            metaData = metaData,
+            sourceId = "Tracker"
+        }
+    else
+        message = {
+            type = messageType,
+            source = "Service",
+            content = content,
+            metaData = {},
+            sourceId = "Tracker"
+        }
+    end
     
---     if validateMessage(message) then
---         if socket ~= nil and protocolHasBeenSend then
---             sendMessageOverWs("NewMessage", message)
---         elseif message.type ~= "Debug" then
---             sendMessageOverHTTP(message)
---         end
+    if validateMessage(message) then
+        if sendMessageOverWs("NewMessage",message) == false then
+            sendMessageOverHTTP(message)
+        end
         
---     else
---         print("[WARNING] Invalid message: "..textutils.serialise(message), true)
---     end
--- end
+    else
+        print("[WARNING] Invalid message: "..textutils.serialise(message), true)
+    end
+end
 
 
--- local function sendInfo(content, metaData)
---     print("[INFO] "..content, false)
---     sendMessage(content, "Info", metaData)
--- end
+local function sendInfo(content, metaData)
+    print("[INFO] "..content, false)
+    sendMessage(content, "Info", metaData)
+end
 
--- local function sendWarning(content, metaData)
---     print("[WARNING] "..content, false)
---     sendMessage(content, "Warning", metaData)
--- end
+local function sendWarning(content, metaData)
+    print("[WARNING] "..content, false)
+    sendMessage(content, "Warning", metaData)
+end
 
--- local function sendError(content, metaData)
---     print("[ERROR] "..content, false)
---     sendMessage(content, "Error", metaData)
--- end
+local function sendError(content, metaData)
+    print("[ERROR] "..content, false)
+    sendMessage(content, "Error", metaData)
+end
 
--- local function sendDebug(content, metaData)
---     sendMessage(content, "Debug", metaData)
--- end
+local function sendDebug(content, metaData)
+    sendMessage(content, "Debug", metaData)
+end
 
--- local printFunc = print
--- print = function (content, sendAsDebug)
---     if sendAsDebug == nil then
---         sendAsDebug = false
---     end
---     local linesWritten = printFunc(content)
---     if sendAsDebug then
---         sendDebug(content)
---     end
---     return linesWritten
--- end
+local printFunc = print
+print = function (content, sendAsDebug)
+    if sendAsDebug == nil then
+        sendAsDebug = false
+    end
+    local linesWritten = printFunc(content)
+    if sendAsDebug then
+        sendDebug(content)
+    end
+    return linesWritten
+end
 
 
 
@@ -183,7 +175,7 @@ local function executeCommands()
             local message = tasklist[#tasklist]
             
             if message == nil then
-                print("Message is nill")
+                print("Message is nil", true)
             else
                 if message.type == "MESSAGE" then
                     if sendMessageOverWs("NewMessage",message.content) == false then
@@ -219,34 +211,19 @@ local function openMessagesConnection()
         checkModemConnections()
         local eventData = table.pack(os.pullEvent())
         if eventData[1] == 'modem_message' and eventData[3] == wirelessChannel  then
-            if socket and protocolHasBeenSend then
-                table.insert(tasklist, 1, eventData[5])
-                -- local message = eventData[5]
-                -- if message.type == "MESSAGE" then
-                --     if sendMessageOverWs("NewMessage",message.content) == false then
-                --         sendMessageOverHTTP(message.content)
-                --     end
-                -- elseif message.type == "COMPUTER" then
-                --     sendMessageOverWs("NewComputer", message.content)
-                -- elseif message.type == "LOCATION" then
-                --     sendMessageOverWs("NewLocation",message.content)
-                -- end
-            else
-                print("Tried to send message while WS was inactive or protocol hasn't been send yet")
-                --sendWarning("Tried to send message while WS was inactive or protocol hasn't been send yet", {socket=socket, protocolHasBeenSend=protocolHasBeenSend, event=eventData})
-            end
+            table.insert(tasklist, 1, eventData[5])            
         elseif eventData[1] == "websocket_message" and eventData[2] == wsUrl then
             print(eventData[3])
 
         elseif eventData[1] == "websocket_success" and eventData[2] == wsUrl then
-            print("[STATUS] Succesfully connected to Tracker Server", false)
+            print("[STATUS] Succesfully connected to Tracker Server", true)
             socket = eventData[3]
             sendProtocol()
 
         elseif eventData[1] == "websocket_closed" and eventData[2] == wsUrl then
             socket = nil
             --sendInfo("Connection with Tracker Server closed")
-            print("Connection with Tracker Server closed")
+            print("Connection with Tracker Server closed", true)
             protocolHasBeenSend = false
             timer_id = os.startTimer(1)
 
@@ -292,6 +269,7 @@ end
 
 local function main()
     checkModemConnections()
+    getToken(true)
     parallel.waitForAll(bind(openMessagesConnection), bind(executeCommands))
 
 end

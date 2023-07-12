@@ -74,6 +74,8 @@ local function sendMessage(content, messageType, metaData)
     local message, source
     if isTurtle then
         source = "Turtle"
+    elseif pocket then
+        source = "Pocket"
     else
         source = "Computer"
     end
@@ -135,18 +137,21 @@ end
 ---@param content string
 ---@param metaData any | nil
 function SendInfo(content, metaData)
+    print("[INFO] "..content, false)
     sendMessage(content, "Info", metaData)
 end
 ---Send a Warning Message, use these to warn the user
 ---@param content string
 ---@param metaData any | nil
 function SendWarning(content, metaData)
+    print("[WARNING] "..content, false)
     sendMessage(content, "Warning", metaData)
 end
 ---Send a Error Message, use these if something is seriously wrong, is automatically fired when error occurres
 ---@param content string
 ---@param metaData any | nil
 function SendError(content, metaData)
+    print("[ERROR] "..content, false)
     sendMessage(content, "Error", metaData)
 end
 ---Send a Debug Message, use these for spam, debug and other high frequency messages. is automatically fired when print() is used
@@ -220,9 +225,6 @@ local function sendLocation()
         },
         dimension = dimension
     }
-    test = test + 1
-    print("sending location")
-    print(test)
     sendOverWireless("LOCATION", location)
 end
 
@@ -394,7 +396,6 @@ local function bind(f)
             else
                 SendError(err)
                 SetErrorStatus()
-                error(err)
             end
         end
     end

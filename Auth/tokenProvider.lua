@@ -12,7 +12,8 @@ end
 
 local function sendToken(token)
     print("[INFO] Sending token")
-    modem.transmit(channel, channel, {token=token.readAll()})
+    local tokenTable =  textutils.unserialiseJSON(token)
+    modem.transmit(channel, channel, {token=tokenTable.idToken})
 end
 
 local function sendError(error)
@@ -25,7 +26,7 @@ local function listenForEvents()
         if eventData[1] == "modem_message" and eventData[5] == "REQUEST_TOKEN" then
             getToken()
         elseif eventData[1] == "http_success" and eventData[2] == url then
-            sendToken(eventData[3])
+            sendToken(eventData[3].readAll())
         elseif eventData[1] == "http_failure" and eventData[2] == url then
             print("[ERROR] Failed to get token")
             print(eventData[3])

@@ -1,3 +1,5 @@
+require("Tracker.TrackerLib")
+
 local meBridge = peripheral.find("meBridge")
 local energyDetector = peripheral.find("energyDetector")
 local monitor = peripheral.find("monitor")
@@ -5,6 +7,7 @@ local vibrationChambers = {}
 local meIsOnline = true
 local amountHeadroom = 1
 local isReplenishing = false
+local hasSendError = false
 local burnTime = 11
 
 local function findVibrationChambers()
@@ -76,14 +79,17 @@ local function needsReplenishing()
             print("ME Offline")
         end
         meIsOnline = false
-        return 0
+        return false
     end
     max = max*2
     curr = curr*2
     meIsOnline = true
 
     local requiredPercentage = 100 - ((curr/max) * 100)
-
+    if requiredPercentage > 90 and not hasSendError then
+        SendError("Energy storage is below 10%", vibrationChambers)
+        hasSendError = true
+    end
     if requiredPercentage > 10 then
         isReplenishing = true
         return isReplenishing
@@ -208,4 +214,5 @@ local function main()
     parallel.waitForAll(balanceVC, updateMonitor)
 end
 
-main()
+
+InitTracker(main, 9)
