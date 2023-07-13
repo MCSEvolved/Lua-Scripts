@@ -1,22 +1,5 @@
-local record Options 
-    include_files: boolean|nil
-    include_dirs: boolean|nil
-end
-
-local enum EMode
-    "r"
-    "w"
-    "a"
-    "rb"
-    "wb"
-    "ab"
-end
-
-local enum EWhence
-    "set"
-    "cur"
-    "end"
-end
+local EMode = require("@types.shared.Mode")
+local EWhence = require("@types.shared.Whence")
 
 local record FileHandle
     read: nil|function(count: integer|nil): nil|integer|string
@@ -30,6 +13,11 @@ local record FileHandle
     seek: nil|function(whence: EWhence|nil, offset: integer|nil): (nil, string)|integer
 
     close: function()
+end
+
+local record Options 
+    include_files: boolean|nil
+    include_dirs: boolean|nil
 end
 
 local record Attributes
