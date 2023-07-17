@@ -107,4 +107,4 @@ local function main()
     harvestBeehives()
 end
 
-InitTracker(main, 0)
+InitTracker(main, 1)

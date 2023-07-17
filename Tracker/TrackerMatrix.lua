@@ -1,6 +1,7 @@
 require("libraries.lib")
 
 local wirelessChannel = 40
+local commandsChannel = 41
 
 local wirelessModem = peripheral.find("modem", function (n,o)
     return o.isWireless()
@@ -165,6 +166,9 @@ local function checkModemConnections()
     if not wirelessModem.isOpen(wirelessChannel) then
         wirelessModem.open(wirelessChannel)
     end
+    if not wirelessModem.isOpen(commandsChannel) then
+        wirelessModem.open(commandsChannel)
+    end
 end
 
 
@@ -185,12 +189,18 @@ local function executeCommands()
                     sendMessageOverWs("NewComputer", message.content)
                 elseif message.type == "LOCATION" then
                     sendMessageOverWs("NewLocation",message.content)
+                elseif message.type == "COMMAND" then
+                    sendDebug("Sending command '"..message.arguments[2].."' to computer "..message.arguments[1], message)
+                    wirelessModem.transmit(commandsChannel, commandsChannel, {computerId=message.arguments[1], command=message.arguments[2]})
                 end
                 table.remove(tasklist, #tasklist)
             end
-            
+        
+        else
+            sleep(0.01)
         end
-        sleep(0.01)
+        print(#tasklist)
+        
     end
 end
 
@@ -214,6 +224,13 @@ local function openMessagesConnection()
             table.insert(tasklist, 1, eventData[5])            
         elseif eventData[1] == "websocket_message" and eventData[2] == wsUrl then
             print(eventData[3])
+            local message = textutils.unserialiseJSON(eventData[3])
+            if message then
+                if message.target and message.target == "ComputerCommand" then
+                    table.insert(tasklist, 1, {type="COMMAND", command=message.arguments})
+                end
+            end
+            
 
         elseif eventData[1] == "websocket_success" and eventData[2] == wsUrl then
             print("[STATUS] Succesfully connected to Tracker Server", true)
