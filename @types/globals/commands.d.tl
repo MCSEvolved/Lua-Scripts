@@ -6,15 +6,13 @@ local record AsyncCommands
     getBlockInfo: function(x: integer, y: integer, z: integer): number 
 end
 
-local record Commands
+global record commands
     exec: function(command: string): boolean, {string}, number|nil 
     execAsync: function(command: string): number
     list: function(subCommand: string): {string} 
     getBlockPosition: function(): integer, integer, integer
     getBlockInfos: function(minX: integer, minY: integer, minZ: integer, maxX: integer, maxY: integer, maxZ: integer, dimension: string|nil): {table} 
     getBlockInfo: function(x: integer, y: integer, z: integer): table 
-    native: Commands
+    native: commands
     async: AsyncCommands
 end
-
-return Commands

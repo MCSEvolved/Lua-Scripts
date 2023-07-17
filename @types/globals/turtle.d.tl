@@ -3,7 +3,7 @@ local type side = enum
     "right"
 end
 
-local record Turtle
+global record turtle
     craft: function(limit: integer|nil): boolean, string|nil
     forward: function() : boolean, string|nil
     back: function() : boolean, string|nil
@@ -48,5 +48,3 @@ local record Turtle
     inspectDown: function(): boolean, table|string
     getItemDetail: function(slot: integer|nil, detailed: boolean|nil): table|nil
 end
-
-return Turtle

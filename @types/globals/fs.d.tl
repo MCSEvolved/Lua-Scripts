@@ -28,7 +28,7 @@ local record Attributes
     modified: number
 end
 
-local record Fs
+global record fs
     complete: function(path: string, location: string, include_files: boolean|nil, include_dirs: boolean|nil): {string}
     complete: function(path: string, location: string, options: Options|nil): {string}
     find: function(path: string): {string}
@@ -51,5 +51,3 @@ local record Fs
     getCapacity: function(path: string): integer|nil
     attributes: function(path: string): Attributes
 end
-
-return Fs

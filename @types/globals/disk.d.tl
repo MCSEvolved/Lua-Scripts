@@ -1,4 +1,4 @@
-local record Disk
+global record disk
     isPresent: function(name: string): boolean
     getLabel: function(name: string): string|nil
     setLabel: function(name: string, label: string)
@@ -11,5 +11,3 @@ local record Disk
     eject: function(name: string)
     getID: function(name: string): string|nil
 end
-
-return Disk

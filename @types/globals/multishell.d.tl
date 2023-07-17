@@ -1,4 +1,4 @@
-local record MultiShell
+global record multiShell
     getFocus: function(): number
     setFocus: function(n: number): boolean
     getTitle: function(n: number): string|nil
@@ -7,5 +7,3 @@ local record MultiShell
     launch: function(tProgramEnv: table, sProgramEnv: string, ...:{any}): number
     getCount: function(): number
 end
-
-return MultiShell
