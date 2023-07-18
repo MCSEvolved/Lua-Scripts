@@ -19,7 +19,7 @@ local function findWirelessModem()
         end
     end
     
-    return nil
+    error("Couldnt find modem")
 end
 
 local wirelessChannel = 10
@@ -79,7 +79,6 @@ local function sendOverWireless(type, data)
             return
         end
     end
-    
 end
 
 local function retryMessageIfNoCompletion(type, data)

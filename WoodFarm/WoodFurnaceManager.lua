@@ -1,3 +1,5 @@
+require("Tracker.TrackerLib")
+
 local bufferChestWood
 local bufferChestWoodName = "minecraft:chest_29"
 
@@ -19,7 +21,7 @@ local function findFurnaces()
             table.insert(furnaces, value)
         end
     end
-    print(#furnaces.." Furnaces Found")
+    SendInfo(#furnaces.." Furnaces Found")
 end
 
 local function pushToStorage(from, fromSlot)
@@ -31,7 +33,7 @@ local function getMeBridge()
     if meBridge then
         return meBridge
     else
-        print("ME OFFLINE, WAITING...")
+        print("ME OFFLINE, WAITING...", true)
         while meBridge == nil do
             os.sleep(0.01)
         end
@@ -62,7 +64,7 @@ local function pushWoodToFurnaces()
             local detail = bufferChestWood.getItemDetail(i)
             while detail and detail.name == "minecraft:spruce_log" do
                 local furnace = furnaces[furnaceIndex]
-                print("PUSHING TO FURNACE "..furnaceIndex)
+                print("PUSHING TO FURNACE "..furnaceIndex, true)
                 bufferChestWood.pushItems(furnace, i, 8, 1)
                 if furnaceIndex < #furnaces then
                     furnaceIndex = furnaceIndex + 1
@@ -115,6 +117,7 @@ local function updateMonitor()
         monitor.setCursorPos(1, 1)
         writeLineToMonitor(production)
         writeLineToMonitor("Coal/min")
+        SendDebug("Production of last minute: "..production)
         production = 0
         os.sleep(60)
     end
@@ -133,4 +136,4 @@ local function main()
     parallel.waitForAll(pushWoodToFurnaces, pushFuelToFurnaces, pullCharcoalFromFurnaces, updateMonitor)
 end
 
-main()
+InitTracker(main, 2)

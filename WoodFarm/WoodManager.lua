@@ -150,22 +150,22 @@ local function executeCommands()
         end
         local message = tasklist[#tasklist]
         table.remove(tasklist, #tasklist)
-        print("[COMMAND] "..message.type.. " FROM: "..message.origin)
-        if message == nil then
-            error("Message was nil for some reason")
+        if message ~= nil then
+            print("[COMMAND] "..message.type.. " FROM: "..message.origin)
+            if message.type == "REQUEST_FUEL" then
+                giveFuel(message.origin, message.data)
+                print("DONE FUEL "..message.origin)
+            elseif message.type == "EMPTY_INVENTORY" then
+                emptyInventoryOfTurtle(message.origin)
+                print("DONE INVENTORY "..message.origin)
+            elseif message.type == "REQUEST_SAPLINGS" then
+                giveSaplings(message.origin)
+                print("DONE SAPLINGS "..message.origin)
+            elseif message.type == "STANDBY" then
+                startTurtle(message.origin)
+            end
         end
-        if message.type == "REQUEST_FUEL" then
-            giveFuel(message.origin, message.data)
-            print("DONE FUEL "..message.origin)
-        elseif message.type == "EMPTY_INVENTORY" then
-            emptyInventoryOfTurtle(message.origin)
-            print("DONE INVENTORY "..message.origin)
-        elseif message.type == "REQUEST_SAPLINGS" then
-            giveSaplings(message.origin)
-            print("DONE SAPLINGS "..message.origin)
-        elseif message.type == "STANDBY" then
-            startTurtle(message.origin)
-        end
+        
     end
 end
 

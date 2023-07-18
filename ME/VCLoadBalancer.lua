@@ -1,3 +1,5 @@
+require("Tracker.TrackerLib")
+
 local meBridge = peripheral.find("meBridge")
 local energyDetector = peripheral.find("energyDetector")
 local monitor = peripheral.find("monitor")
@@ -5,6 +7,7 @@ local vibrationChambers = {}
 local meIsOnline = true
 local amountHeadroom = 1
 local isReplenishing = false
+local hasSendError = false
 local burnTime = 11
 
 local function findVibrationChambers()
@@ -76,19 +79,20 @@ local function needsReplenishing()
             print("ME Offline")
         end
         meIsOnline = false
-        return 0
+        return false
     end
     max = max*2
     curr = curr*2
     meIsOnline = true
-    local requiredPower = max - curr
-    if requiredPower < 0 then
-        requiredPower = 0
+
+    local requiredPercentage = 100 - ((curr/max) * 100)
+    if requiredPercentage > 90 and not hasSendError then
+        SendError("Energy storage is below 10%", vibrationChambers)
+        hasSendError = true
     end
-    local amountVC = requiredPower/80
-    amountVC = math.floor(amountVC)
-    if amountVC > 1000 then
+    if requiredPercentage > 10 then
         isReplenishing = true
+        return isReplenishing
     end
     isReplenishing = false
     return isReplenishing
@@ -177,9 +181,9 @@ local function updateMonitor()
         else
             monitor.setTextColor(colors.green)
         end
-        writeLineToMonitor("[Coal Usage]")
+        writeLineToMonitor("[approx. Coal Usage]")
         monitor.setTextColor(colors.white)
-        writeLineToMonitor("aprox. "..(math.ceil((activeVCs*5.4))).." Coal/min")
+        writeLineToMonitor((math.ceil((activeVCs*5.4))).." Coal/min - "..math.ceil((activeVCs)).."/"..#vibrationChambers.." Chambers")
         writeLineToMonitor("----------")
 
         
@@ -210,4 +214,5 @@ local function main()
     parallel.waitForAll(balanceVC, updateMonitor)
 end
 
-main()
+
+InitTracker(main, 9)

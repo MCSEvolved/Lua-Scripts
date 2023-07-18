@@ -1,6 +1,27 @@
-local wirelessModem = peripheral.find("modem", function (n,o)
-    return o.isWireless()
-end)
+local isTurtle = false
+local function getWirelessModem()
+    if turtle then
+        local left = peripheral.wrap("left")
+        if peripheral.getType(left) == "modem" then
+            if left.isWireless() then
+                return left
+            end
+        end
+    
+        local right = peripheral.wrap("right")
+        if peripheral.getType(right) == "modem" then
+            if right.isWireless() then
+                return right
+            end
+        end
+    else
+        return peripheral.find("modem", function (n,o)
+            return o.isWireless()
+        end)
+    end
+    
+end
+local wirelessModem = getWirelessModem()
 
 local function getDeviceType()
     if turtle then
@@ -31,13 +52,15 @@ local isEnabled = false
 local x, y, z, facing = nil, nil, nil, nil
 local rotationDefined = false
 local dimension = "Unknown"
-local isTurtle = false
+
 local computerId = os.getComputerID()
 local label = "NO_LABEL"
 local device = getDeviceType()
-local status = "Working"
+local status = "Online"
 local systemId = 0
-local wirelessChannel = 20
+local wirelessChannel = 40
+local commandsChannel = 41
+
 
 
 local printFunc = print
@@ -63,7 +86,7 @@ local function sendOverWireless(type, content)
 end
 
 local function validateMessage(message)
-    return message.type and message.source and message.content and message.identifier
+    return message.type and message.source and message.content and message.sourceId
 end
 
 local function sendMessage(content, messageType, metaData)
@@ -73,6 +96,8 @@ local function sendMessage(content, messageType, metaData)
     local message, source
     if isTurtle then
         source = "Turtle"
+    elseif pocket then
+        source = "Pocket"
     else
         source = "Computer"
     end
@@ -87,15 +112,15 @@ local function sendMessage(content, messageType, metaData)
             source = source,
             content = content,
             metaData = metaData,
-            identifier = tostring(computerId)
+            sourceId = tostring(computerId)
         }
     else
         message = {
             type = messageType,
             source = source,
             content = content,
-            metaData = nil,
-            identifier = tostring(computerId)
+            metaData = {},
+            sourceId = tostring(computerId)
         }
     end
     
@@ -117,14 +142,14 @@ local function sendInfo()
         fuelLimit = turtle.getFuelLimit()
     end
     local information = {
-        id = computerId,
-        label = computerLabel,
-        systemId = systemId,
-        status = status,
-        device = device,
-        fuelLevel = fuelLevel,
-        fuelLimit = fuelLimit,
-        hasModem = wirelessModem ~= nil
+        Id = computerId,
+        Label = computerLabel,
+        SystemId = systemId,
+        Status = status,
+        Device = device,
+        FuelLevel = fuelLevel,
+        FuelLimit = fuelLimit,
+        HasModem = wirelessModem ~= nil
     }
     --wirelessModem.transmit(wirelessChannel, wirelessChannel, information)
     sendOverWireless("COMPUTER", information)
@@ -134,18 +159,21 @@ end
 ---@param content string
 ---@param metaData any | nil
 function SendInfo(content, metaData)
+    print("[INFO] "..content, false)
     sendMessage(content, "Info", metaData)
 end
 ---Send a Warning Message, use these to warn the user
 ---@param content string
 ---@param metaData any | nil
 function SendWarning(content, metaData)
+    print("[WARNING] "..content, false)
     sendMessage(content, "Warning", metaData)
 end
 ---Send a Error Message, use these if something is seriously wrong, is automatically fired when error occurres
 ---@param content string
 ---@param metaData any | nil
 function SendError(content, metaData)
+    print("[ERROR] "..content, false)
     sendMessage(content, "Error", metaData)
 end
 ---Send a Debug Message, use these for spam, debug and other high frequency messages. is automatically fired when print() is used
@@ -203,15 +231,23 @@ end
 function SetEmptyingStatus()
     changeStatus("Emptying")
 end
+---Set status to 'Stopped'
+function SetStoppedStatus()
+    changeStatus("Stopped")
+end
+---Set status to 'Rebooting'
+function SetRebootingStatus()
+    changeStatus("Rebooting")
+end
 ---Set a custom status, please capitalize the first letter of each word
 ---@param customStatus string
 function SetCustomStatus(customStatus)
     changeStatus(customStatus)
 end
-
+local test = 0
 local function sendLocation()
     local location = {
-        computerId = tostring(computerId),
+        computerId = computerId,
         coordinates = {
             x = x,
             y = y,
@@ -341,6 +377,23 @@ if isTurtle then
 end
 
 
+local function listenForCommands()
+    while true do
+        local _, _, channel, replyChannel, message, _ = os.pullEvent("modem_message")
+        if channel == commandsChannel then
+            if message.computerId and message.computerId == os.getComputerID() and message.command then
+                print("Received command "..message.command, true)
+                if message.command == "STOP" then
+                    error("TRACKER_STOP")
+                elseif message.command == "REBOOT" then
+                    error("TRACKER_REBOOT")
+                end
+            end
+        end
+    end
+end
+
+
 
 
 local function initInfo()
@@ -362,20 +415,23 @@ end
 local function initComputerInfo(_systemId)
     label = os.getComputerLabel()
     device = getDeviceType()
-    if systemId ~= nil then
-        systemId = systemId
+    if _systemId ~= nil then
+        systemId = _systemId
     end
 end
 
 local function initModemCommunication()
     if wirelessModem then
         wirelessModem.open(wirelessChannel)
-        SendDebug("Wireless channel opened on channel: "..wirelessChannel)
+        wirelessModem.open(commandsChannel)
+        SendDebug("Wireless channel opened on channel: "..wirelessChannel.." & "..commandsChannel)
     else
         print("[ERROR] No Wireless Modem detected, tracker won't work without it.", true)
         error("Missing Wireless Modem")
     end
 end
+
+
 
 local function bind(f)
     return function()
@@ -387,13 +443,23 @@ local function bind(f)
                 SetManuallyTerminatedStatus()
                 SendDebug("Turtle has been manually terminated")
                 error(err)
+            elseif err == "TRACKER_STOP" then
+                SetStoppedStatus()
+                SendDebug("Turtle has been stopped")
+            elseif err == "TRACKER_REBOOT" then
+                SetRebootingStatus()
+                SendDebug("Turtle is rebooting")
+                os.reboot()
             else
                 SendError(err)
                 SetErrorStatus()
-                error(err)
             end
         end
     end
+end
+
+local function enterCrashedState()
+    parallel.waitForAny(bind(listenForCommands), bind(initInfo))
 end
 
 
@@ -406,7 +472,8 @@ function InitTracker(main, _systemId)
     end
 
     SendDebug("Turtle has started up and is online")
-    parallel.waitForAll(bind(main), bind(initInfo))
+    parallel.waitForAny(bind(main), bind(initInfo), bind(listenForCommands))
+    enterCrashedState()
 end
 
 

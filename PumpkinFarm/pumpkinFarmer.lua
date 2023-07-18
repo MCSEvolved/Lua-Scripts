@@ -88,7 +88,7 @@ local function harvestRow()
         elseif success and block.name == "minecraft:glass" then
             return true
         elseif success then
-            logError("Expected pumpkin, glass or air, got " .. block.name)
+            logWarning("Expected pumpkin, glass or air, got " .. block.name)
             return false
         end
         turtle.forward()
@@ -170,6 +170,17 @@ local function moveToNextLayer()
     return true
 end
 
+local function findGlassWall()
+    for i = 1, 4, 1 do
+        local success, block = turtle.inspect()
+        if success and block.name == "minecraft:glass" then
+            return true
+        end
+        turtle.turnRight()
+    end
+    return false
+end
+
 local function moveToStart()
     logInfo("moving to start")
     while true do
@@ -194,23 +205,30 @@ local function harvestModule()
     moveToStart()
 end
 
-local function emptyInventory()
-    logInfo("Emptying inventory")
-    turtle.turnLeft()
-    turtle.forward()
+local function dropPumpkinsInOutput()
+    logInfo("Dropping pumpkins in output")
+    local success, block = turtle.inspect()
+
+    if not success or block.name ~= "minecraft:glass" then
+        turtle.turnLeft()
+        turtle.forward()
+    end
+
     local success, block = turtle.inspectDown()
     if not success or block.name ~= "minecraft:barrel" then
         logError("Expected barrel, got " .. block.name, true)
     end
 
     for i = 1, 16 do
-        local count = turtle.getItemCount(i)
-        if count > 0 then
+        local item = turtle.getItemDetail(i)
+        if type(item) == "table" and item.name == "minecraft:pumpkin" then
             turtle.select(i)
             if not turtle.dropDown() then
                 logWarning("Failed to drop items in barrel")
                 return false
             end
+        elseif type(item) == "table" then
+            logWarning("Found item item in inventory: " .. item.name)
         end
     end
     turtle.back()
@@ -219,6 +237,14 @@ local function emptyInventory()
 end
 
 local function refuel()
+    for i = 1, 16 do
+        local item = turtle.getItemDetail(i)
+        if type(item) == "table" and item.name == "minecraft:charcoal" then
+            turtle.select(i)
+            turtle.refuel()
+        end
+    end
+
     if turtle.getFuelLevel() > (64*80) then
         logInfo("Fuel level: OK")
         return true
@@ -231,7 +257,14 @@ local function refuel()
     end
 
     turtle.suckDown()
-    turtle.refuel()
+
+    for i = 1, 16 do
+        local item = turtle.getItemDetail(i)
+        if type(item) == "table" and item.name == "minecraft:charcoal" then
+            turtle.select(i)
+            turtle.refuel()
+        end
+    end
 
     if turtle.getFuelLevel() < (64*80) then
         logInfo("Fuel level still low")
@@ -251,14 +284,18 @@ local function checkInventoryEmpty()
     return true
 end
 
-local function listenForShutdownMessage()
+local function listenForMessage()
     modem.open(20)
     while true do
         local _, _, _, _, message = os.pullEvent("modem_message")
         if type(message) == "table" and message.sender == "MANAGER" and message.data == "STOP_NEXT_ROUND" then
             logInfo("Received shutdown message")
             running = false
-            return
+        end
+
+        if type(message) == "table" and message.sender == "MANAGER" and message.data == "REBOOT" then
+            logInfo("Received reboot message")
+            os.reboot()
         end
         logInfo("Received unknown message")
     end
@@ -277,14 +314,7 @@ local function checkIfInStartingPosition()
     end
 
     -- find glass block wall
-    for i = 1, 4, 1 do
-        success, block = turtle.inspect()
-        if success and block.name == "minecraft:glass" then
-            break
-        end
-        turtle.turnRight()
-    end
-    if not success or block.name ~= "minecraft:glass" then
+    if not findGlassWall() then
         return false, "GLASS WALL NOT FOUND"
     end
 
@@ -301,7 +331,7 @@ local function checkIfInStartingPosition()
     -- Check if block in front is pumpkin or air
     turtle.turnLeft()
     success, block = turtle.inspect()
-    if not success or block.name ~= "minecraft:pumpkin" then
+    if success and block.name ~= "minecraft:pumpkin" then
         return false, "BLOCK FRONT NOT PUMPKIN OR AIR"
     end
 
@@ -325,7 +355,12 @@ end
 ---@return boolean
 ---@return string
 local function tryWalkBackToStart()
-    logInfo("Trying to walk back to start")
+    local x, y, z = gps.locate()
+    if x == nil or y == nil or z == nil then
+        logInfo("Trying to walk back to start")
+    else
+        logInfo("Trying to walk back to start" .. " x:" .. x .. " y:" .. y .. " z:" .. z)
+    end
 
     -- Check if block under is barrel and try to walk back to start if on top of output barrel
     local success, block = turtle.inspectDown()
@@ -333,25 +368,28 @@ local function tryWalkBackToStart()
         for i = 1, 4 do
             success, block = turtle.inspect()
             if success and (block.name == "minecraft:pumpkin_stem" or block.name == "minecraft:attached_pumpkin_stem") then
+                turtle.turnRight()
+                turtle.forward()
+                turtle.turnLeft()
                 break;
             end
-            turtle.turnRight()
         end
 
-        turtle.turnRight()
-        turtle.forward()
-        turtle.turnLeft()
         return checkIfInStartingPosition()
     end
 
     -- Check if block under is dirt or grass and try to walk back to glass wall with walking space (front of module)
     if success and (block.name == "minecraft:dirt" or block.name == "minecraft:grass_block") then
         if not harvestRow() then
-            logError("Failed to harvest row while trying to find route to start", true)
-            return false, "FAILED TO WALK BACK TO START"
+            if findGlassWall() then
+                turtle.turnRight()
+                turtle.back()
+            else
+                logError("Failed to harvest row while trying to find route to start", true)
+                return false, "FAILED TO WALK BACK TO START"
+            end
         end
-        success, block = turtle.inspect()
-        if not success or block.name ~= "minecraft:glass" then
+        if not findGlassWall() then
             return false, "FAILED TO WALK BACK TO START"
         end
         success, block = turtle.inspectDown()
@@ -368,16 +406,9 @@ local function tryWalkBackToStart()
 
     -- Check if turtle is in walking space at the front of the module, from there, walk towards the starting position
     success, block = turtle.inspectDown()
-    if not success then
+    if not success or (block.name ~= "minecraft:dirt" and block.name ~= "minecraft:grass_block") then
         -- find glass block wall
-        for i = 1, 4, 1 do
-            success, block = turtle.inspect()
-            if success and block.name == "minecraft:glass" then
-                break
-            end
-            turtle.turnRight()
-        end
-        if not success or block.name ~= "minecraft:glass" then
+        if not findGlassWall() then
             return false, "FAILED TO WALK BACK TO START"
         end
 
@@ -399,6 +430,24 @@ local function tryWalkBackToStart()
     return false, "FAILED TO WALK BACK TO START"
 end
 
+local function waitForBarrelToHaveSpace()
+    logInfo("Waiting for barrel to be empty")
+
+    while true do
+        local success, block = turtle.inspectDown()
+        if not success and block.name ~= "minecraft:barrel" then
+            logError("Expected barrel below turtle while waiting for it to be empty", true)
+        end
+        local barrel = peripheral.wrap("bottom")
+        for i = 1, 27 do
+            local item = barrel.getItemDetail(i)
+            if type(item) == "table" and item.maxCount > item.count then
+                return true
+            end
+        end
+    end
+end
+
 local function initialize()
     logInfo("Initializing")
 
@@ -412,25 +461,30 @@ local function initialize()
     else
         local success, message = tryWalkBackToStart()
         if not success then
-            logError("Failed to walk back to start: " .. message, true)
+            logError("Failed to walk back to start: " .. message)
+            running = false --set running to false to stop the program (wait for reboot fix)
+        else
+            logInfo("Found way back to starting position")
         end
-        logInfo("Found way back to starting position")
     end
 end
 
 local function main()
     initialize()
-    while running do
-        if not emptyInventory() then
-            logError("Chest is full", true)
+    while true do
+        while running do
+            while not dropPumpkinsInOutput() do
+                waitForBarrelToHaveSpace()
+            end
+            refuel()
+            if not checkInventoryEmpty() then
+                logError("Inventory not empty", true)
+            end
+            harvestModule()
+            sleep(harvestInterval)
         end
-        refuel()
-        if not checkInventoryEmpty() then
-            logError("Inventory not empty", true)
-        end
-        harvestModule()
-        sleep(harvestInterval)
+        sleep(1)
     end
 end
 
-parallel.waitForAll(main, listenForShutdownMessage)
+parallel.waitForAll(main, listenForMessage)
