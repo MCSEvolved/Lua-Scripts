@@ -73,7 +73,7 @@ print = function (content, sendAsDebug)
     end
     local linesWritten = printFunc(content)
     if sendAsDebug then
-        SendDebug(content)
+        SendDebug(content, nil, false)
     end
     return linesWritten
 end
@@ -158,28 +158,53 @@ end
 ---Send a Info Message, use these for occasional informative messages
 ---@param content string
 ---@param metaData any | nil
-function SendInfo(content, metaData)
-    print("[INFO] "..content, false)
+---@param printToTerminal boolean | nil
+function SendInfo(content, metaData, printToTerminal)
+    if printToTerminal == nil then
+        printToTerminal = true
+    end
+    if printToTerminal then
+        print("[INFO] "..content, false)
+    end
     sendMessage(content, "Info", metaData)
 end
 ---Send a Warning Message, use these to warn the user
 ---@param content string
 ---@param metaData any | nil
-function SendWarning(content, metaData)
-    print("[WARNING] "..content, false)
+---@param printToTerminal boolean | nil
+function SendWarning(content, metaData, printToTerminal)
+    if printToTerminal == nil then
+        printToTerminal = true
+    end
+    if printToTerminal then
+        print("[WARNING] "..content, false)
+    end
     sendMessage(content, "Warning", metaData)
 end
 ---Send a Error Message, use these if something is seriously wrong, is automatically fired when error occurres
 ---@param content string
 ---@param metaData any | nil
-function SendError(content, metaData)
-    print("[ERROR] "..content, false)
+---@param printToTerminal boolean | nil
+function SendError(content, metaData, printToTerminal)
+    if printToTerminal == nil then
+        printToTerminal = true
+    end
+    if printToTerminal then
+        print("[ERROR] "..content, false)
+    end
     sendMessage(content, "Error", metaData)
 end
 ---Send a Debug Message, use these for spam, debug and other high frequency messages. is automatically fired when print() is used
 ---@param content string
 ---@param metaData any | nil
-function SendDebug(content, metaData)
+---@param printToTerminal boolean | nil
+function SendDebug(content, metaData, printToTerminal)
+    if printToTerminal == nil then
+        printToTerminal = true
+    end
+    if printToTerminal then
+        print("[DEBUG] "..content, false)
+    end
     sendMessage(content, "Debug", metaData)
 end
 
@@ -191,7 +216,7 @@ end
 
 local function changeStatus(_status)
     status = _status
-    SendDebug("[Status] Changed to: "..status)
+    SendDebug("[Status] Changed to: "..status, nil, false)
     sendInfo()
 end
 
@@ -381,6 +406,7 @@ local function listenForCommands()
     while true do
         local _, _, channel, replyChannel, message, _ = os.pullEvent("modem_message")
         if channel == commandsChannel then
+            print(textutils.serialise(message))
             if message.computerId and message.computerId == os.getComputerID() and message.command then
                 print("Received command "..message.command, true)
                 if message.command == "STOP" then
@@ -439,14 +465,14 @@ local function bind(f)
         if not success then
             sendLocation()
             sendInfo()
-            if err == "Terminated" then
+            if string.find(err, "Terminated") then
                 SetManuallyTerminatedStatus()
                 SendDebug("Turtle has been manually terminated")
                 error(err)
-            elseif err == "TRACKER_STOP" then
+            elseif string.find(err, "TRACKER_STOP") then
                 SetStoppedStatus()
                 SendDebug("Turtle has been stopped")
-            elseif err == "TRACKER_REBOOT" then
+            elseif string.find(err, "TRACKER_REBOOT")  then
                 SetRebootingStatus()
                 SendDebug("Turtle is rebooting")
                 os.reboot()
