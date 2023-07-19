@@ -164,7 +164,9 @@ function SendInfo(content, metaData, printToTerminal)
         printToTerminal = true
     end
     if printToTerminal then
+        term.setTextColor(colors.green)
         print("[INFO] "..content, false)
+        term.setTextColor(colors.white)
     end
     sendMessage(content, "Info", metaData)
 end
@@ -177,7 +179,9 @@ function SendWarning(content, metaData, printToTerminal)
         printToTerminal = true
     end
     if printToTerminal then
+        term.setTextColor(colors.yellow)
         print("[WARNING] "..content, false)
+        term.setTextColor(colors.white)
     end
     sendMessage(content, "Warning", metaData)
 end
@@ -190,7 +194,9 @@ function SendError(content, metaData, printToTerminal)
         printToTerminal = true
     end
     if printToTerminal then
+        term.setTextColor(colors.error)
         print("[ERROR] "..content, false)
+        term.setTextColor(colors.white)
     end
     sendMessage(content, "Error", metaData)
 end
@@ -203,7 +209,9 @@ function SendDebug(content, metaData, printToTerminal)
         printToTerminal = true
     end
     if printToTerminal then
+        term.setTextColor(colors.gray)
         print("[DEBUG] "..content, false)
+        term.setTextColor(colors.white)
     end
     sendMessage(content, "Debug", metaData)
 end
