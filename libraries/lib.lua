@@ -14,9 +14,8 @@ function GetAuthToken(withBearer)
      end
   
      modem.open(AUTHCHANNEL)
-
+     modem.transmit(AUTHCHANNEL, AUTHCHANNEL, "REQUEST_TOKEN")
      while true do
-        modem.transmit(AUTHCHANNEL, AUTHCHANNEL, "REQUEST_TOKEN")
         local _,_,channel,_,response = os.pullEvent("modem_message")
         if channel == AUTHCHANNEL and response.token then
             modem.close(AUTHCHANNEL)

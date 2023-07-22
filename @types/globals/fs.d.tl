@@ -10,7 +10,7 @@ local record FileHandle
     writeLine: nil|function(text: string)
     flush: nil|function()
 
-    seek: nil|function(whence: EWhence|nil, offset: integer|nil): (nil, string)|integer
+    seek: nil|function(whence: EWhence|nil, offset: integer|nil): integer|nil, string|nil
 
     close: function()
 end
@@ -28,8 +28,9 @@ local record Attributes
     modified: number
 end
 
-local record Fs
-    complete: function(path: string, location: string, include_files: boolean|nil|Options, include_dirs: boolean|nil): {string}
+global record fs
+    complete: function(path: string, location: string, include_files: boolean|nil, include_dirs: boolean|nil): {string}
+    complete: function(path: string, location: string, options: Options|nil): {string}
     find: function(path: string): {string}
     isDriveRoot: function(path: string): boolean
     list: function(path: string): {string}
@@ -44,11 +45,9 @@ local record Fs
     move: function(path: string, dest: string) 
     copy: function(path: string, dest: string)
     delete: function(path: string)
-    open: function(path: string, mode: EMode): (nil, string)|FileHandle
+    open: function(path: string, mode: EMode): FileHandle|nil, string|nil
     getDrive: function(path: string): string|nil
     getFreeSpace: function(path: string): integer
     getCapacity: function(path: string): integer|nil
     attributes: function(path: string): Attributes
 end
-
-return Fs

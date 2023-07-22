@@ -1,4 +1,4 @@
-local Peripheral_Type = require("@types.peripherals.peripheralTypes")
+local Peripheral_Type = require("@types.shared.peripheralTypes")
 
 local record Modem
     open: function(channel: integer)

@@ -21,8 +21,10 @@ local record Monitor
     isColour: function(): boolean
     isColor: function(): boolean
     blit: function(text: string, textColor: string, backgroundColor: string)
-    setPaletteColour: function(index: integer, colorOrR: integer|number, G: number|nil, B: number|nil)
-    setPaletteColor: function(index: integer, colorOrR: integer|number, G: number|nil, B: number|nil)
+    setPaletteColour: function(index: integer, R: number, G: number, B: number)
+    setPaletteColour: function(index: integer, color: integer)
+    setPaletteColor: function(index: integer, R: number, G: number, B: number)
+    setPaletteColor: function(index: integer, color: integer)
     getPaletteColour: function(colour: integer): number, number, number
     getPaletteColor: function(color: integer): number, number, number
 end

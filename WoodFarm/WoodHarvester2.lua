@@ -1,3 +1,5 @@
+require("Tracker.TrackerLib")
+
 local function findWirelessModem()
     local left = peripheral.wrap("left")
     if peripheral.getType(left) == "modem" then
@@ -54,7 +56,7 @@ local function goForward(amount)
     end
     for i=1, amount do
         if turtle.forward() == false then
-            print("Block in the way, digging...")
+            print("Block in the way, digging...", true)
             dig()
             if turtle.forward() == false then
                 error("Can't move even when I removed the block")
@@ -69,7 +71,7 @@ local function goBack(amount)
     end
     for i=1, amount do
         if turtle.back() == false then
-            print("Block in the way, digging...")
+            print("Block in the way, digging...", true)
             turtle.turnLeft()
             turtle.turnLeft()
             dig()
@@ -88,7 +90,7 @@ local function goUp(amount)
     end
     for i=1, amount do
         if turtle.up() == false then
-            print("Block in the way, digging...")
+            print("Block in the way, digging...", true)
             digUp()
             if turtle.up() == false then
                 error("Can't move even when I removed the block")
@@ -103,7 +105,7 @@ local function goDown(amount)
     end
     for i=1, amount do
         if turtle.down() == false then
-            print("Block in the way, digging...")
+            print("Block in the way, digging...", true)
             digDown()
             if turtle.down() == false then
                 error("Can't move even when I removed the block")
@@ -118,7 +120,7 @@ local function sendOverWireless(type, data)
         origin = os.getComputerID(),
         data = data
     }
-    print("SEND: "..textutils.serialise(message))
+    print("SEND: "..textutils.serialise(message), true)
     wirelessModem.transmit(wirelessChannel, wirelessChannel, message)
 end
 
@@ -210,6 +212,7 @@ local function harvestTree()
 end
 
 local function farmRoutine()
+    SetFarmingStatus()
     while true do
         local success, block = turtle.inspect()
         if success and block.name == "minecraft:spruce_log" then
@@ -226,6 +229,7 @@ local function farmRoutine()
 end
 
 local function returnHome()
+    SetReturningStatus()
     local blocksWalked = 0
     goBack()
     goDown(3)
@@ -249,13 +253,16 @@ local function returnHome()
 end
 
 local function refuelTurtle()
+    SetRefuelingStatus()
     turtle.select(1)
-    print("REFUEL")
+    print("REFUEL", true)
     turtle.refuel()
+    SetDoneStatus()
 end
 
 
 local function startRun()
+    SetFarmingStatus()
     isFarming = true
     if not checkIfEnoughSaplings() then
         error("Tried to start run without saplings")
@@ -267,9 +274,11 @@ local function startRun()
     returnHome()
     sendOverWireless("DONE")
     isFarming = false
+    SetWaitingStatus()
 end
 
 local function resetLocationToStart()
+    SetReturningStatus()
     local harvestFase
     local sucUp, blockUp = turtle.inspectUp()
     if not sucUp then
@@ -314,7 +323,7 @@ local function resetLocationToStart()
                         break
                     end
                 else
-                    print("didnt find right block")
+                    print("didnt find right block", true)
                     return false
                 end
             else
@@ -324,6 +333,7 @@ local function resetLocationToStart()
         end
     end
 
+    SendDebug(harvestFase)
 
     if harvestFase == "HARVEST_1" then
         dig()
@@ -437,7 +447,7 @@ local function goToStart()
         turtle.turnLeft()
     end
 
-    print("Not at starting position, returning...")
+    SendInfo("Not at starting position, returning...")
 
     -- big return script
     return resetLocationToStart()
@@ -454,14 +464,14 @@ local function executeCommands()
         local message = tasklist[#tasklist]
         table.remove(tasklist, #tasklist)
         if message ~= nil then
-            print("[COMMAND] "..message.type.. " FROM: "..message.origin)
+            print("[COMMAND] "..message.type.. " FROM: "..message.origin, true)
             if message.type == "REFUEL" then
                 refuelTurtle()
             elseif message.type == "START_RUN" then
                 startRun()
             end
         else
-            print("[WARNING] Tried to execute an empty command (nil exception)")
+            SendWarning("[WARNING] Tried to execute an empty command (nil exception)")
         end
         
     end
@@ -471,7 +481,7 @@ local function listenForCommands()
     while true do
         local event, side, channel, replyChannel, message, distance = os.pullEvent("modem_message")
         if message.data and message.data == os.getComputerID() then
-            print("[RECEIVED] "..message.type.." FROM: "..message.origin)
+            print("[RECEIVED] "..message.type.." FROM: "..message.origin, true)
             if message.type == "START_RUN" then
                 if not isFarming then
                     table.insert(tasklist, 1, message)
@@ -483,7 +493,7 @@ local function listenForCommands()
             end
         else
             if message.type == "IS_ONLINE" then
-                print("[RECEIVED] "..message.type.." FROM: "..message.origin)
+                print("[RECEIVED] "..message.type.." FROM: "..message.origin, true)
                 sendOverWireless("ONLINE", isFarming)
             elseif message.type == "REBOOT" then
                 os.reboot()
@@ -509,4 +519,4 @@ local function main()
     parallel.waitForAll(listenForCommands, executeCommands)
 end
 
-main()
+InitTracker(main, 2)

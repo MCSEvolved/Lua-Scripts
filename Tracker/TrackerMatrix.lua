@@ -1,6 +1,7 @@
 require("libraries.lib")
 
 local wirelessChannel = 40
+local commandsChannel = 41
 
 local wirelessModem = peripheral.find("modem", function (n,o)
     return o.isWireless()
@@ -40,7 +41,7 @@ local function sendMessageOverHTTP(message)
     local body = textutils.serialiseJSON(message)
     local headers = {["Authorization"]=token, ["Content-Type"]="application/json"}
 
-    local response, err, failResponse = http.post(url, body, headers)
+    local response, err, failResponse = http.request(url, body, headers)
     if failResponse and failResponse.getResponseCode() == 401 then
         getToken(true)
         sleep(1)
@@ -128,6 +129,7 @@ local function sendError(content, metaData)
 end
 
 local function sendDebug(content, metaData)
+    print("[DEBUG] "..content, false)
     sendMessage(content, "Debug", metaData)
 end
 
@@ -146,12 +148,12 @@ end
 
 
 local function sendProtocol()
-    print("Sending Protocol", false)
+    sendDebug("Sending Protocol")
     local protocol = textutils.serialiseJSON({
         protocol="json",
         version=1
     })..""
-    print(protocol, false)
+    sendDebug(protocol)
     socket.send(
         protocol
     )
@@ -165,6 +167,9 @@ local function checkModemConnections()
     if not wirelessModem.isOpen(wirelessChannel) then
         wirelessModem.open(wirelessChannel)
     end
+    if not wirelessModem.isOpen(commandsChannel) then
+        wirelessModem.open(commandsChannel)
+    end
 end
 
 
@@ -175,7 +180,7 @@ local function executeCommands()
             local message = tasklist[#tasklist]
             
             if message == nil then
-                print("Message is nil", true)
+                sendDebug("Message is nil")
             else
                 if message.type == "MESSAGE" then
                     if sendMessageOverWs("NewMessage",message.content) == false then
@@ -185,19 +190,25 @@ local function executeCommands()
                     sendMessageOverWs("NewComputer", message.content)
                 elseif message.type == "LOCATION" then
                     sendMessageOverWs("NewLocation",message.content)
+                elseif message.type == "COMMAND" then
+                    sendDebug("Sending command '"..message.command[2].."' to computer "..message.command[1], message)
+                    wirelessModem.transmit(commandsChannel, commandsChannel, {computerId=message.command[1], command=message.command[2]})
                 end
                 table.remove(tasklist, #tasklist)
             end
-            
+        
+        else
+            sleep(0.01)
         end
-        sleep(0.01)
+        --print(#tasklist)
+        
     end
 end
 
 local function connectToWebsocket()
     local token = getToken()
     http.websocketAsync(wsUrl, {["Authorization"]=token})
-    print("[STATUS] connecting to Server...", false)
+    sendDebug("connecting to Server...")
 end
 
 
@@ -213,23 +224,31 @@ local function openMessagesConnection()
         if eventData[1] == 'modem_message' and eventData[3] == wirelessChannel  then
             table.insert(tasklist, 1, eventData[5])            
         elseif eventData[1] == "websocket_message" and eventData[2] == wsUrl then
-            print(eventData[3])
+            local messageString = eventData[3]
+            messageString = messageString:sub(1, messageString:find('', 1, true) - 1)
+            local message, err = textutils.unserialiseJSON(messageString)
+            if message then 
+                if message.target and message.target == "ComputerCommand" then
+                    table.insert(tasklist, 1, {type="COMMAND", command=message.arguments})
+                end
+            end
+            
 
         elseif eventData[1] == "websocket_success" and eventData[2] == wsUrl then
-            print("[STATUS] Succesfully connected to Tracker Server", true)
+            sendDebug("Succesfully connected to Tracker Server")
             socket = eventData[3]
             sendProtocol()
 
         elseif eventData[1] == "websocket_closed" and eventData[2] == wsUrl then
             socket = nil
             --sendInfo("Connection with Tracker Server closed")
-            print("Connection with Tracker Server closed", true)
+            sendDebug("Connection with Tracker Server closed")
             protocolHasBeenSend = false
             timer_id = os.startTimer(1)
 
         elseif eventData[1] == "websocket_failure" and eventData[2] == wsUrl then
             socket = nil
-            print("[ERROR] Connection with Tracker Server failed: "..eventData[3], true)
+            sendDebug("Connection with Tracker Server failed: "..eventData[3])
             if protocolHasBeenSend then
                 --sendWarning("WS connection failed", {taskList=tasklist})
             end
@@ -239,10 +258,10 @@ local function openMessagesConnection()
 
         elseif eventData[1] == "timer" and eventData[2] == timer_id then
             connectToWebsocket()
-            print("[STATUS] Connecting to Tracker Server...", false)
+            sendDebug("Connecting to Tracker Server...")
 
         elseif eventData[1] == "http_failure" and eventData[2] == httpUrl.."/message/new" then
-            print(eventData[3])
+            sendDebug(eventData[3])
             if eventData[4].getResponseCode() == 401 then
                 getToken(true)
             end
@@ -256,10 +275,10 @@ local function bind(f)
         local success, err = pcall(f)
         if not success then
             if err == "Terminated" then
-                --sendDebug("Matrix has been manually terminated", {taskList=tasklist})
+                sendDebug("Matrix has been manually terminated", {taskList=tasklist})
                 error(err)
             else
-                --sendError(err, {taskList=tasklist})
+                sendError(err, {taskList=tasklist})
                 error(err)
             end
         end

@@ -1,4 +1,4 @@
-local record Colours
+global record colours
     white: integer
     orange: integer
     magenta: integer
@@ -23,5 +23,3 @@ local record Colours
     toBlit: function(color: integer): string
     fromBlit: function(hex: string): integer
 end
-
-return Colours

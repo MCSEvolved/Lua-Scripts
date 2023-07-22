@@ -1,3 +1,5 @@
+require("Tracker.TrackerLib")
+
 local function findWirelessModem()
     return peripheral.find("modem", function (n,o)
         return o.isWireless()
@@ -97,14 +99,14 @@ local function fromStorage(inventory, itemName, count)
 end
 
 local function emptyInventoryOfTurtle(turtleId)
-    print("EMPTYING INVENTORY OF "..turtleId)
+    print("EMPTYING INVENTORY OF "..turtleId, true)
     for i = 1, 16 do
         bufferTurtleDump.pullItems(getNameOfTurtleById(turtleId), i)
         local item = bufferTurtleDump.getItemDetail(1)
         if item and item.name == "minecraft:spruce_log" then
             print(i.." TO WOOD")
             if bufferChestWood.pullItems(bufferTurtleDumpName, 1) < item.count then
-                print("Buffer Chest is full")
+                SendWarning("Buffer Chest is full")
                 toStorage(bufferTurtleDumpName, item.name, 64)
             end
         else
@@ -118,7 +120,7 @@ local function emptyInventoryOfTurtle(turtleId)
 end
 
 local function giveFuel(turtleId)
-    print("GIVING FUEL TO "..turtleId)
+    print("GIVING FUEL TO "..turtleId, true)
     fromStorage(getNameOfTurtleById(turtleId), "minecraft:charcoal", 64)
     os.sleep(1)
     sendOverWireless("REFUEL", turtleId)
@@ -127,7 +129,7 @@ local function giveFuel(turtleId)
 end
 
 local function giveSaplings(turtleId)
-    print("GIVING SAPLINGS TO "..turtleId)
+    print("GIVING SAPLINGS TO "..turtleId, true)
     fromStorage(getNameOfTurtleById(turtleId), "minecraft:spruce_sapling", 24)
 end
 
@@ -143,7 +145,7 @@ local function executeCommands()
         local message = tasklist[#tasklist]
         table.remove(tasklist, #tasklist)
         if message ~= nil then
-            print("[COMMAND] "..message.type.. " FROM: "..message.origin)
+            print("[COMMAND] "..message.type.. " FROM: "..message.origin, true)
             if message.type == "START_TURTLE" then
                 if not isTurtleInList(workingTurtles, message.origin) then
                     table.insert(workingTurtles, message.origin)
@@ -169,15 +171,18 @@ end
 local function listenOnWireless()
     while true do
         local event, side, channel, replyChannel, message, distance = os.pullEvent("modem_message")
-        print("[RECEIVED] "..message.type.." FROM: "..message.origin)
-        if message.type == "DONE" then
-            removeTurtleFromList(workingTurtles, message.origin)
-            table.insert(tasklist, 1, {type="START_TURTLE", origin=message.origin})
-            os.queueEvent("task_added")
-        elseif message.type == "ONLINE" then
-            table.insert(tasklist, 1, {type="IS_ONLINE", origin=message.origin, data=message.data})
-            os.queueEvent("task_added")
+        if channel == wirelessChannel then
+            print("[RECEIVED] "..message.type.." FROM: "..message.origin, true)
+            if message.type == "DONE" then
+                removeTurtleFromList(workingTurtles, message.origin)
+                table.insert(tasklist, 1, {type="START_TURTLE", origin=message.origin})
+                os.queueEvent("task_added")
+            elseif message.type == "ONLINE" then
+                table.insert(tasklist, 1, {type="IS_ONLINE", origin=message.origin, data=message.data})
+                os.queueEvent("task_added")
+            end
         end
+        
     end
 end
 
@@ -205,4 +210,4 @@ local function main()
     parallel.waitForAll(listenOnWireless, executeCommands, sendIsOnline)
 end
 
-main()
+InitTracker(main, 2)
