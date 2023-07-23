@@ -16,7 +16,7 @@ global record colours
     red: integer
     black: integer
     combine: function(...: integer): integer
-    subtract: function(color: integer, ...: integer): integer
+    subtract: function(color: integer, ...: {integer}): integer
     test: function(colorSet: integer, colorToTest: integer): boolean
     packRGB: function(r: number, g: number, b: number): integer
     unpackRGB: function(hex: integer): number, number, number
