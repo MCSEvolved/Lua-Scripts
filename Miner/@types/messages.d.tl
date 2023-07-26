@@ -7,4 +7,9 @@ local record ActionMessage
     action: string
 end
 
-return {DockingGrantedMessage, ActionMessage}
+local record InventoryMessage
+    action: string
+    inventory: {{string: any}}
+end
+
+return {DockingGrantedMessage, ActionMessage, InventoryMessage}

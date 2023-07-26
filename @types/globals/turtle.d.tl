@@ -43,8 +43,8 @@ global record turtle
     getFuelLimit: function(): number
     equipLeft: function(): boolean, string|nil
     equipRight: function(): boolean, string|nil
-    inspect: function(): boolean, table|string
-    inspectUp: function(): boolean, table|string
-    inspectDown: function(): boolean, table|string
-    getItemDetail: function(slot: integer|nil, detailed: boolean|nil): table|nil
+    inspect: function(): boolean, {string: any}|string
+    inspectUp: function(): boolean, {string: any}|string
+    inspectDown: function(): boolean, {string: any}|string
+    getItemDetail: function(slot: integer|nil, detailed: boolean|nil): {string: any}|nil
 end

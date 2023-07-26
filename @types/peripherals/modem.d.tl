@@ -1,4 +1,4 @@
-local Peripheral_Type = require("@types.shared.peripheralTypes")
+local EPeripheral = require("@types.shared.peripheralTypes")
 
 local record Modem
     open: function(channel: integer)
@@ -10,7 +10,7 @@ local record Modem
     getNamesRemote: function(): {string}
     isPresentRemote: function(name: string): boolean
     getTypeRemote: function(name: string): string|nil
-    hasTypeRemote: function(name: string, type: Peripheral_Type): boolean|nil
+    hasTypeRemote: function(name: string, type: EPeripheral): boolean|nil
     getMethodsRemote: function(name: string): {string}| nil
     callRemote: function(remoteName: string, method: string, ...: any): any...
     getNameLocal: function(): string|nil

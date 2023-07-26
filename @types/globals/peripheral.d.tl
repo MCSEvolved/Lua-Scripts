@@ -1,10 +1,10 @@
-local Peripheral_Type = require("@types.shared.peripheralTypes")
+local EPeripheral = require("@types.shared.peripheralTypes")
 
 global record peripheral
     getNames: function(): {string}
     isPresent: function(name: string): boolean
-    getType: function<T>(peripheral: string|T): nil|Peripheral_Type...
-    hasType: function<T>(peripheral: string|T, peripheral_type: Peripheral_Type): boolean|nil
+    getType: function<T>(peripheral: string|T): nil|EPeripheral...
+    hasType: function<T>(peripheral: string|T, EPeripheral: EPeripheral): boolean|nil
     getMethods: function(name: string): {string}|nil
     getName: function<T>(peripheral: T): string
     call: function(name: string, method: string, ...: {any}): any...

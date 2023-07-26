@@ -1,4 +1,4 @@
-local type Peripheral_Type = enum
+local type EPeripheral = enum
     "command"
     "computer"
     "drive"
@@ -11,4 +11,4 @@ local type Peripheral_Type = enum
     "inventory"
 end
 
-return Peripheral_Type
+return EPeripheral
