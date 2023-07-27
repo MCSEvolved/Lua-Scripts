@@ -1,4 +1,5 @@
 local isTurtle = false
+local crashedState = false
 local function getWirelessModem()
     if turtle then
         local left = peripheral.wrap("left")
@@ -194,7 +195,7 @@ function SendError(content, metaData, printToTerminal)
         printToTerminal = true
     end
     if printToTerminal then
-        term.setTextColor(colors.error)
+        term.setTextColor(colors.red)
         print("[ERROR] "..content, false)
         term.setTextColor(colors.white)
     end
@@ -277,18 +278,20 @@ end
 function SetCustomStatus(customStatus)
     changeStatus(customStatus)
 end
-local test = 0
 local function sendLocation()
-    local location = {
-        computerId = computerId,
-        coordinates = {
-            x = x,
-            y = y,
-            z = z,
-        },
-        dimension = dimension
-    }
-    sendOverWireless("LOCATION", location)
+    if isTurtle then
+        local location = {
+            computerId = computerId,
+            coordinates = {
+                x = x,
+                y = y,
+                z = z,
+            },
+            dimension = dimension
+        }
+        sendOverWireless("LOCATION", location)
+    end
+    
 end
 
 local function defineRotation()
@@ -414,11 +417,15 @@ local function listenForCommands()
     while true do
         local _, _, channel, replyChannel, message, _ = os.pullEvent("modem_message")
         if channel == commandsChannel then
-            print(textutils.serialise(message))
             if message.computerId and message.computerId == os.getComputerID() and message.command then
-                print("Received command "..message.command, true)
+                SendDebug("Received command "..message.command, message)
                 if message.command == "STOP" then
-                    error("TRACKER_STOP")
+                    if crashedState then
+                        SendDebug("Turtle is already in crashed state, ignoring this STOP command")
+                    else
+                        SendDebug("Received STOP command, entering crashed state")
+                        error("TRACKER_STOP")
+                    end
                 elseif message.command == "REBOOT" then
                     error("TRACKER_REBOOT")
                 end
@@ -478,6 +485,7 @@ local function bind(f)
                 SendDebug("Turtle has been manually terminated")
                 error(err)
             elseif string.find(err, "TRACKER_STOP") then
+                crashedState = true
                 SetStoppedStatus()
                 SendDebug("Turtle has been stopped")
             elseif string.find(err, "TRACKER_REBOOT")  then
