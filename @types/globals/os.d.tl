@@ -1,10 +1,12 @@
+local EEvent = require("@types.shared.Event")
+
 global record os
-    pullEvent: function(filter: string|nil): string, any...
-    pullEventRaw: function(filter: string|nil): string, any...
+    pullEvent: function(filter: EEvent): EEvent, any...
+    pullEventRaw: function(filter: EEvent): EEvent, any...
     sleep: function(timer: number)
     version: function(): string
     run: function(env: table, path: string, ...: any): boolean
-    queueEvent: function(name: string, ...: any)
+    queueEvent: function(name: EEvent, ...: any)
     startTimer: function(timer: number): number
     cancelTimer: function(token: number)
     setAlarm: function(time: number): number
