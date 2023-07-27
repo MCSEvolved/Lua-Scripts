@@ -2,15 +2,15 @@ local EMode = require("@types.shared.Mode")
 local EWhence = require("@types.shared.Whence")
 
 local record FileHandle
-    read: nil|function(count: integer|nil): nil|integer|string
-    readLine: nil|function(withTrailing: boolean|nil): string|nil
-    readAll: nil|function(): string|nil
+    read: function(count: integer|nil): nil|integer|string
+    readLine: function(withTrailing: boolean|nil): string|nil
+    readAll: function(): string|nil
     
-    write: nil|function(text: string|integer)
-    writeLine: nil|function(text: string)
-    flush: nil|function()
+    write: function(text: string|integer)
+    writeLine: function(text: string)
+    flush: function()
 
-    seek: nil|function(whence: EWhence|nil, offset: integer|nil): integer|nil, string|nil
+    seek: function(whence: EWhence|nil, offset: integer|nil): integer|nil, string|nil
 
     close: function()
 end

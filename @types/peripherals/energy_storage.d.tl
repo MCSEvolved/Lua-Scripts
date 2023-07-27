@@ -1,7 +1,7 @@
-local record Energy_Storage
+local record EnergyStorage
     getEnergy: function(): number
     getEnergyCapacity: function(): number
 end
 
 
-return Energy_Storage
+return EnergyStorage

@@ -22,7 +22,7 @@ local record Response
     getResponseHeaders: function(): {string: string}
 end
 
-local record HTTP
+global record http
     get: function(url: string|GetRequest, headers: {string: string}|nil, binary: boolean|nil): (nil, string, Response|nil)|Response
     post: function(url: string|PostRequest, body: string|nil, headers: {string:string}|nil, binary: boolean|nil): (nil, string, Response|nil)|Response
     request: function()
@@ -31,5 +31,3 @@ local record HTTP
     websocketAsync: function()
     websocket: function()
 end
-
-return HTTP
