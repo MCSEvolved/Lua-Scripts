@@ -1,6 +1,7 @@
 local tradingInterfaceNames = {}
 local inputChest = peripheral.wrap("minecraft:barrel_63")
 local outputChest = peripheral.wrap("minecraft:barrel_64")
+local mebridgeName = "meBridge_12"
 
 --- Log an info message
 ---@param text string
@@ -68,8 +69,7 @@ local function getVillagers()
         if not tradingInterface then
             logWarning("Could not find trading interface with name " .. interfaceName)
         end
-        local success = pcall(tradingInterface.getProfession)
-        if success then
+        if tradingInterface.getProfession() then
             count = count + 1
             table.insert(tradingInterfacesWithVillagers, interfaceName)
         end
@@ -91,7 +91,7 @@ local function findTrade(resultItemName)
             logWarning("Could not find trading interface with name " .. tradingInterfaceName)
             return false
         end
-        local trades = tradingInterface.getTrades()
+        local success, trades = tradingInterface.getTrades()
         for tradeID, trade in pairs(trades) do
             for itemName, item in pairs(trade.result) do
                 if itemName == resultItemName then
@@ -150,7 +150,7 @@ end
 ---@param tradeID integer
 ---@param itemAmount integer
 ---@param countPerTrade integer
-local function depcreatedTradeItem(tradingInterfaceName, tradeID, itemAmount, countPerTrade)
+local function deprecatedTradeItem(tradingInterfaceName, tradeID, itemAmount, countPerTrade)
     logInfo("Trading " .. itemAmount .. " items")
     local amountOfTrades = math.ceil(itemAmount / countPerTrade)
     local tradingInterface = peripheral.wrap(tradingInterfaceName)
@@ -158,7 +158,10 @@ local function depcreatedTradeItem(tradingInterfaceName, tradeID, itemAmount, co
         logError("Failed to wrap trading interface: " .. tradingInterfaceName, true)
     end
     for i = 1, amountOfTrades do
-        if not tradingInterface.trade(peripheral.getName(inputChest), peripheral.getName(outputChest), tradeID) then return false end
+        local success, error = tradingInterface.trade(peripheral.getName(inputChest), peripheral.getName(outputChest), tradeID)
+        if not success then
+            logError("Failed to trade: " .. error, true)
+        end
     end
     return true
 end
@@ -176,7 +179,7 @@ local function getCompleteTradesList()
         for tradeID, trade in pairs(trades) do
             trade["TradingInterfaceName"] = tradingInterfaceName
             trade["TradeID"] = tradeID
-            trade["VillagerProfession"] = tradingInterface.getProfession()
+            _, trade["VillagerProfession"] = tradingInterface.getProfession()
             table.insert(completeTradesList, trade)
         end
     end
@@ -189,9 +192,15 @@ local function initialize()
     if not inputChest then
         logError("No input chest found", true)
     end
+
     if not outputChest then
         logError("No output chest found", true)
     end
+
+    if not peripheral.wrap(mebridgeName) then
+        logError("No ME bridge found", true)
+    end
+
     tradingInterfaceNames = findTradingInterfaces()
     if #tradingInterfaceNames == 0 then
         logError("No trading interfaces found", true)
@@ -326,26 +335,182 @@ local function validateTradeOperation(tradeOperation)
         return false, "type of tradeOperation.AmountOfTrades is not number"
     end
 
+    if type(tradeOperation["Trade"]["CostA"]["Item"]["Name"]) ~= "string" then
+        logWarning("type of tradeOperation.CostA.Item.Name is not string")
+        return false, "type of tradeOperation.CostA.Item.Name is not string"
+    end
+
+    if type(tradeOperation["Trade"]["CostB"]["Item"]["Name"]) ~= "string" then
+        logWarning("type of tradeOperation.CostB.Item.Name is not string")
+        return false, "type of tradeOperation.CostB.Item.Name is not string"
+    end
+
+    if type(tradeOperation["Trade"]["CostA"]["Amount"] ~= "number") then
+        logWarning("type of tradeOperation.CostA.Amount is not number")
+        return false, "type of tradeOperation.CostA.Amount is not number"
+    end
+
+    if type(tradeOperation["Trade"]["CostB"]["Amount"] ~= "number") then
+        logWarning("type of tradeOperation.CostB.Amount is not number")
+        return false, "type of tradeOperation.CostB.Amount is not number"
+    end
+
     return true, "Trade operation is valid"
 end
 
-local function completeTradeOperation(tradeOperation)
-    local success, message = validateTradeOperation(tradeOperation)
+--- Get the ME bridge, waits until it's online if not found
+---@return table
+local function getMEBridge()
+    local loggedMeBridgeOffline = false
+    while true do
+        local mebridge = peripheral.wrap(mebridgeName)
+        if type(mebridge) == "table" then
+            return mebridge
+        end
+        if not loggedMeBridgeOffline then
+            logWarning("Waiting for mebridge to come online...")
+            loggedMeBridgeOffline = true
+        end
+        sleep(1)
+    end
+end
 
-    if not success then
-        return false, message
+--- Push item to ME, max 64
+---@param itemName string
+---@param fromInventoryName string
+local function pushItemToME(itemName, fromInventoryName)
+    getMEBridge().importItemFromPeripheral({name=itemName}, fromInventoryName)
+end
+
+--- Pull item from ME, max 64
+---@param itemName string @name of the item to pull
+---@param toInventoryName string  @name of the inventory to pull the item to
+---@param amount number @amount of items to pull, max 64
+local function pullItemFromME(itemName, toInventoryName, amount)
+    getMEBridge().exportItemToPeripheral({name=itemName, count=amount}, toInventoryName)
+end
+
+local function emptyOutputChest()
+    logInfo("Emptying output chest")
+    local items = outputChest.list()
+    for key, item in pairs(items) do
+        local amountPushed = pushItemToME(item.name, peripheral.getName(outputChest))
+        if amountPushed < item.count then
+            return false
+        end
+    end
+    return true
+end
+
+local function emptyInputChest()
+    logInfo("Emptying input chest")
+    local items = inputChest.list()
+    for key, item in pairs(items) do
+        local amountPushed = pushItemToME(item.name, peripheral.getName(inputChest))
+        if amountPushed < item.count then
+            return false
+        end
+    end
+    return true
+end
+
+local function pushToInputChest(itemName, amount)
+    logInfo("Pushing " .. amount .. " " .. itemName .. " to input chest")
+    local amountToPush = amount
+    while amountToPush > 64 do
+        local amountPushed = pullItemFromME(itemName, peripheral.getName(inputChest))
+        if amountPushed == 0 then return false, amount - amountToPush end
+        amountToPush = amountToPush - amountPushed
+    end
+    return true
+end
+
+local function handleProvideInputChestWithTradeCost(cost, fillMaxHalfChestSize)
+    local itemName = cost["Item"]["Name"]
+    local amount = cost["Amount"]
+    if fillMaxHalfChestSize and amount > 13 * 64 then
+        amount = 13 * 64
+    end
+    local success, amountPushed = pushToInputChest(itemName, amount)
+    return success, amountPushed
+end
+
+--- Provide the input chest with the cost of the trade.
+--- It provides as much as needed or as much as the chest can handle, 
+--- when a costB exists it fills half the chest with costA and half with costB
+local function provideInputChestWithTradeCost(tradeOperation)
+    local costB = tradeOperation["Trade"]["CostB"]
+
+    -- If there is no costB or costB is air, only provide costA
+    if not costB or costB["Item"]["Name"] == "minecraft:air" then
+        handleProvideInputChestWithTradeCost(tradeOperation["Trade"]["CostA"])
+        return
+    end
+
+    -- If there is a costB, provide both costA and costB, but only fill half the chest with either
+    handleProvideInputChestWithTradeCost(tradeOperation["Trade"]["CostA"], true)
+    handleProvideInputChestWithTradeCost(tradeOperation["Trade"]["CostB"], true)
+end
+
+--- Do some trades
+---@param tradingInterface table
+---@param tradeID number
+---@param amountOfTrades number
+---@return boolean, number, string @success, amountOfTradesDone, errorMessage
+local function trade(tradingInterface, tradeID, amountOfTrades)
+    logInfo("Trading " .. amountOfTrades .. " times with trade ID " .. tradeID)
+    local tradesDone = 0
+    for i = 1, amountOfTrades do
+        local success, error = tradingInterface.trade(tradeID)
+        if not success then
+            logWarning("Failed to trade: " .. error)
+            return false, tradesDone, error
+        end
+        tradesDone = tradesDone + 1
+    end
+    return true, tradesDone, "Trading completed"
+end
+
+local function handleTradeOperation(tradeOperation)
+    local isValid, validationError = validateTradeOperation(tradeOperation)
+
+    if not isValid then
+        return false, validationError
     end
 
     local tradingInterfaceName = tradeOperation["Trade"]["Location"]["TradingInterfaceName"]
     local tradeID = tradeOperation["Trade"]["Location"]["TradeID"]
     local amountOfTrades = tradeOperation["AmountOfTrades"]
 
+    local tradingInterface = peripheral.wrap(tradingInterfaceName)
+    if not tradingInterface then
+        logError("Could not find trading interface with name " .. tradingInterfaceName)
+        return false, "Could not find trading interface with name " .. tradingInterfaceName
+    end
 
+    while true do
+        -- clear the chests
+        if not emptyInputChest() then
+            logError("Could not empty input chest", true)
+            return false, "Could not empty input chest"
+        end
+        if not emptyOutputChest() then
+            logError("Could not empty output chest", true)
+            return false, "Could not empty output chest"
+        end
 
+        -- provide the input chest with the cost of the trade
+        provideInputChestWithTradeCost(tradeOperation)
 
+        -- trade as much as possible or needed
+        local success, amountOfTradesDone, error = trade(tradingInterface, tradeID, amountOfTrades)
+        -- Would be nice to know what the error was while trading, but when there is something wrong with the input, there is no error message. 
+        -- So there is nothing to validate against yet. I'll add this to the trading interface later if I have time. 
 
-
-
+        -- return if done
+        if success then return true end
+        amountOfTrades = amountOfTrades - amountOfTradesDone
+    end
 end
 
 local function main()
@@ -356,7 +521,7 @@ local function main()
             logInfo("No trade found for " .. itemName)
         else
             logInfo("Found trade for " .. itemName)
-            local tradeSuccess = depcreatedTradeItem(tradingInterfaceNames[interfaceKey], tradeID, itemAmount, countPerTrade)
+            local tradeSuccess = deprecatedTradeItem(tradingInterfaceNames[interfaceKey], tradeID, itemAmount, countPerTrade)
             if not tradeSuccess then
                 logError("Failed complete trade...")
             end
@@ -368,6 +533,6 @@ initialize()
 -- local completeTradesList = getCompleteTradesList()
 -- sendTradesListToServer(completeTradesList)
 main()
-completeTradeOperation({})
+--handleTradeOperation({})
 
 --createWebsocketConnection()
