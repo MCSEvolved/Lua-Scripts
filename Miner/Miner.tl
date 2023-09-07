@@ -37,7 +37,7 @@ modem.open(MINER_CHANNEL)
 
 local function fail(msg: string, additionalData: any)
     modem.transmit(MINER_CHANNEL, MINER_CHANNEL, {action="error", error=msg})
-    error(msg .. '\n' .. textutils.serialiseJSON(additionalData))
+    error(msg .. '\n' .. textutils.serialise(additionalData))
 end
 
 local function returnToStart()

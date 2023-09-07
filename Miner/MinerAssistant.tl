@@ -15,7 +15,7 @@ local MINER_CHANNEL = 30
 local function fail(msg: string, additionalData: any)
     local modem = peripheral.find("modem") as Modem
     modem.transmit(MINER_CHANNEL, MINER_CHANNEL, {action="error", error=msg})
-    error(msg .. '\n' .. textutils.serialiseJSON(additionalData))
+    error(msg .. '\n' .. textutils.serialise(additionalData))
 end
 
 local function setInitData(data: string)
