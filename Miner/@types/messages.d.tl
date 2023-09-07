@@ -1,3 +1,5 @@
+local Location = require("@types.shared.Location")
+
 local record DockingGrantedMessage
     action: string
     targetY: number
@@ -12,4 +14,10 @@ local record InventoryMessage
     inventory: {{string: any}}
 end
 
-return {DockingGrantedMessage, ActionMessage, InventoryMessage}
+local record MovementMessage
+    action: string
+    direction: string
+    location: Location
+end
+
+return {DockingGrantedMessage, ActionMessage, InventoryMessage, MovementMessage}

@@ -9,6 +9,7 @@ local ActionMessage = messages[2]
 ---------END--------------------------------------------
 
 local MINER_CHANNEL = 30
+
 local peripheralSlot = 16
 local modem: Modem = peripheral.wrap("right")
 
@@ -34,17 +35,57 @@ end
 
 modem.open(MINER_CHANNEL)
 
+local function fail(msg: string, additionalData: any)
+    modem.transmit(MINER_CHANNEL, MINER_CHANNEL, {action="error", error=msg})
+    error(msg .. '\n' .. textutils.serialiseJSON(additionalData))
+end
+
+local function returnToStart()
+    local _, currentY, _ = gps.locate()
+
+    local file = io.open("startLocation", 'r')
+    local startY: number|nil
+    if not file is nil then
+        startY = tonumber(file:read())
+        file:close()
+    end
+    if startY == nil then fail("no start location") end
+    while currentY > startY do
+        if turtle.inspectDown() then
+            turtle.digDown()
+        end
+        turtle.down()
+    end
+    fs.delete("startLocation")
+end
+
 local function dock()
     modem.transmit(MINER_CHANNEL,MINER_CHANNEL, {action="request docking"})
     local _, _, _, _, dockingMessage = os.pullEvent("modem_message")
     while not dockingMessage is DockingGrantedMessage or dockingMessage.action ~= "docking granted" do
         _, _, _, _, dockingMessage = os.pullEvent("modem_message")
+        if dockingMessage is ActionMessage and dockingMessage.action == "docking done" then
+            returnToStart()
+        end
     end
 
     if not dockingMessage is DockingGrantedMessage then return end
 
-    local _, startY, _ = gps.locate()
-    local currentY = startY
+    local _, currentY, _ = gps.locate()
+    
+    local file = io.open("startLocation", 'r')
+    local content: number|nil
+    if not file is nil then 
+        content = tonumber(file:read())
+        file:close()
+    end
+    if file is nil or content == nil then
+        file = io.open("startLocation", 'w')
+        if not file is nil then
+            file:write(tostring(currentY))
+        else fail("Could not write to startLocation") end
+    elseif content ~= nil then currentY = content
+    else fail("Failed to read from startLocation") end
 
     while currentY < dockingMessage.targetY do
         if turtle.inspectUp() then
@@ -83,12 +124,7 @@ local function dock()
         _, _, _, _, dockingDoneMessage = os.pullEvent("modem_message")
     end
 
-    while currentY > startY do
-        if turtle.inspectDown() then
-            turtle.digDown()
-        end
-        turtle.down()
-    end
+    returnToStart()
 
 end
 
@@ -321,7 +357,7 @@ end
 
 local function initPathConfig()
     local x,y,z = gps.locate()
-    local file = fs.open('pathconfig', 'r')
+    local file = io.open('pathconfig', 'r')
     if file is nil then
         pathStartingPosition.x=x
         pathStartingPosition.y=y
@@ -338,7 +374,7 @@ local function initPathConfig()
             writeFile.close()
         end
     else
-        local config = textutils.unserialise(file.readAll()) as Config
+        local config = textutils.unserialise(file:read('a')) as Config
         pathStartingPosition = config.pathStartingPosition
         pathFacing = config.pathFacing
     end
@@ -360,10 +396,30 @@ local function init()
     --set pathStartingPosition
     initPathConfig()
 
+    while true do
+        local _, _, _, _, message = os.pullEvent("modem_message")
+        if message is ActionMessage and message.action == "reset docking" then
+            dock()
+        elseif message is ActionMessage and message.action == "start follow" then break end
+    end
+
     walkTo(pathReturnPoint)
     local path = determinePath()
     walkPath(path)
 end
 
-init()
-main()
+local function waitForFailure()
+    while true do
+        local _,_,_,_, message = os.pullEvent("modem_message")
+        if message is ActionMessage and message.action == "error" then
+            print("Assistant failed")
+            break
+        end
+    end
+end
+
+parallel.waitForAny(waitForFailure, function()
+    init()
+    main()
+end)
+
