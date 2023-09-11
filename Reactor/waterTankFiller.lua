@@ -28,7 +28,7 @@ local function suckWater()
     checkForBucket()
     local item = turtle.getItemDetail(1)
     if item and item.name == "minecraft:bucket" then
-        SendDebug("Trying to suck water")
+        SendDebug("Sucking water")
         turtle.place()
         local itemAfter = turtle.getItemDetail(1)
         if itemAfter and itemAfter.name ~= "minecraft:water_bucket" then
@@ -42,11 +42,11 @@ end
 local function placeWaterInTank()
     checkForBucket()
     while automata.getOperationCooldown("useOnBlock") > 0 do
-        os.sleep(0.5)
+        os.sleep(0.1)
     end
     local item = turtle.getItemDetail(1)
     if item and item.name == "minecraft:water_bucket" then
-        SendDebug("Trying to place water in tank")
+        SendDebug("Placing Water")
         local succ, err = automata.useOnBlock()
         if succ == nil then
             error(err)
@@ -105,12 +105,19 @@ local function checkFuel()
     end
 end
 
+local function setConsumptionRate(consumption)
+    local succ, err = automata.setFuelConsumptionRate(consumption)
+    if succ == nil then
+        error(err)
+    end
+end
+
 local function routine()
     while true do
         checkFuel()
         suckWater()
         placeWaterInTank()
-        os.sleep(4)
+        os.sleep(0.01)
     end
     
 end
@@ -121,6 +128,7 @@ local function main()
     checkForTank()
     checkForFuelBarrel()
     checkFuel()
+    setConsumptionRate(2)
     routine()
 end
 

@@ -88,8 +88,7 @@ local function harvestBeehives()
                 
                 local collectSuc6, err = beehive.collectHoney(toolBarrelName, outputBarrelName, bottled)
                 if not collectSuc6 then
-                    print(err)
-                    SendError(err)
+                    error(err)
                 end
                 bottled = not bottled
             end
