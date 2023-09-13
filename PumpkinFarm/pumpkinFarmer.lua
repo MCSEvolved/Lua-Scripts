@@ -271,8 +271,8 @@ local function refuel()
     end
 
     if turtle.getFuelLevel() < (64*80) then
-        logInfo("Fuel level still low")
-        return true
+        logError("Fuel level too low, no fuel found.", true)
+        return false
     else
         logInfo("Fuel level: OK")
         return true
