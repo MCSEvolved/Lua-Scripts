@@ -277,6 +277,10 @@ end
 global function SetRebootingStatus()
     changeStatus("Rebooting")
 end
+---Set status to 'Initializing'
+global function SetInitializingStatus()
+    changeStatus("Initializing")
+end
 ---Set a custom status, please capitalize the first letter of each word
 ---@param customStatus string
 global function SetCustomStatus(customStatus: string)
