@@ -164,7 +164,7 @@ end
 ---@param content string
 ---@param metaData any | nil
 ---@param printToTerminal boolean | nil
-global function SendInfo(content: string, metaData: any|nil, printToTerminal: boolean)
+global function SendInfo(content: string, metaData: any|nil, printToTerminal: boolean|nil)
     if printToTerminal == nil then
         printToTerminal = true
     end
@@ -179,7 +179,7 @@ end
 ---@param content string
 ---@param metaData any | nil
 ---@param printToTerminal boolean | nil
-global function SendWarning(content: string, metaData: any|nil, printToTerminal: boolean)
+global function SendWarning(content: string, metaData: any|nil, printToTerminal: boolean|nil)
     if printToTerminal == nil then
         printToTerminal = true
     end
@@ -194,9 +194,12 @@ end
 ---@param content string
 ---@param metaData any | nil
 ---@param printToTerminal boolean | nil
-global function SendError(content: string, metaData: any|nil, printToTerminal: boolean)
+global function SendError(content: string, metaData: any|nil, printToTerminal: boolean|nil, throwException: boolean|nil)
     if printToTerminal == nil then
         printToTerminal = true
+    end
+    if throwException == nil then
+        throwException = true
     end
     if printToTerminal then
         term.setTextColor(colors.red)
@@ -204,12 +207,15 @@ global function SendError(content: string, metaData: any|nil, printToTerminal: b
         term.setTextColor(colors.white)
     end
     sendMessage(content, "Error", metaData)
+    if throwException then
+        error("ERROR_ALREADY_SEND")
+    end
 end
 ---Send a Debug Message, use these for spam, debug and other high frequency messages.
 ---@param content string
 ---@param metaData any | nil
 ---@param printToTerminal boolean | nil
-global function SendDebug(content: string, metaData: any|nil, printToTerminal: boolean)
+global function SendDebug(content: string, metaData: any|nil, printToTerminal: boolean|nil)
     if printToTerminal == nil then
         printToTerminal = true
     end
@@ -500,10 +506,12 @@ local function bind(f: function): function
                 crashedState = true
                 SetStoppedStatus()
                 SendDebug("Turtle has been stopped")
-            elseif string.find(err as string, "TRACKER_REBOOT")  then
+            elseif string.find(err as string, "TRACKER_REBOOT") then
                 SetRebootingStatus()
                 SendDebug("Turtle is rebooting")
                 os.reboot()
+            elseif string.find(err as string, "ERROR_ALREADY_SEND") then
+                SetErrorStatus()
             else
                 SendError(err as string)
                 SetErrorStatus()
