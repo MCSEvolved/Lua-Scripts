@@ -1,147 +1,154 @@
 require("Tracker.TrackerLib")
 
+local Modem = require("@types.peripherals.modem")
 
-local function findWirelessModem()
-    local left = peripheral.wrap("left")
+local record Message
+    type: string
+    data: any
+    origin: number
+end
+
+local function findWirelessModem(): Modem
+    local left: Modem = peripheral.wrap("left") as Modem
     if peripheral.getType(left) == "modem" then
         if left.isWireless() then
             return left
         end
     end
 
-    local right = peripheral.wrap("right")
+    local right: Modem = peripheral.wrap("right") as Modem
     if peripheral.getType(right) == "modem" then
         if right.isWireless() then
             return right
         end
     end
     
-    error("Couldnt find modem")
+    SendError("Couldnt find modem")
 end
 
-local wirelessChannel = 10
+local wirelessChannel: integer = 10
 
-local wirelessModem = findWirelessModem()
+local wirelessModem:Modem = findWirelessModem()
 
-local tasklist = {}
+local tasklist: {Message} = {}
 
-local isFarming = false
+local isFarming: boolean = false
 
 local function digUp()
-    local succes, block = turtle.inspectUp()
-    if succes and (block.name ~= "minecraft:spruce_log" and block.name ~= "minecraft:spruce_leaves") then
-        error("Tried to dig "..block.name .." while it was expecting leaves or logs")
+    local _, block = turtle.inspectUp()
+    if not block is string and (block.name ~= "minecraft:spruce_log" and block.name ~= "minecraft:spruce_leaves") then
+        SendError("Tried to dig "..block.name as string .." while it was expecting leaves or logs", block)
     end
     turtle.digUp()
 end
 
 local function digDown()
-    local succes, block = turtle.inspectDown()
-    if succes and (block.name ~= "minecraft:spruce_log" and block.name ~= "minecraft:spruce_leaves") then
-        error("Tried to dig "..block.name .." while it was expecting leaves or logs")
+    local _, block = turtle.inspectDown()
+    if not block is string and (block.name ~= "minecraft:spruce_log" and block.name ~= "minecraft:spruce_leaves") then
+        SendError("Tried to dig "..block.name as string .." while it was expecting leaves or logs", block)
     end
     turtle.digDown()
 end
 
 local function dig()
-    local succes, block = turtle.inspect()
-    if succes and (block.name ~= "minecraft:spruce_log" and block.name ~= "minecraft:spruce_leaves") then
-        error("Tried to dig "..block.name .." while it was expecting leaves or logs")
+    local _, block = turtle.inspect()
+    if not block is string and (block.name ~= "minecraft:spruce_log" and block.name ~= "minecraft:spruce_leaves") then
+        SendError("Tried to dig "..block.name as string .." while it was expecting leaves or logs", block)
     end
     turtle.dig()
 end
 
-local function goForward(amount)
+local function goForward(amount: number)
     if amount == nil then
         amount = 1
     end
     for i=1, amount do
         if turtle.forward() == false then
-            print("Block in the way, digging...", true)
+            SendDebug("Block in the way, digging...")
             dig()
             if turtle.forward() == false then
-                error("Can't move even when I removed the block")
+                SendError("Can't move even when I removed the block", {block = turtle.inspect()})
             end
         end
     end
 end
 
-local function goBack(amount)
+local function goBack(amount: number)
     if amount == nil then
         amount = 1
     end
     for i=1, amount do
         if turtle.back() == false then
-            print("Block in the way, digging...", true)
+            SendDebug("Block in the way, digging...")
             turtle.turnLeft()
             turtle.turnLeft()
             dig()
             turtle.turnLeft()
             turtle.turnLeft()
             if turtle.back() == false then
-                error("Can't move even when I removed the block")
+                SendError("Can't move even when I removed the block")
             end
         end
     end
 end
 
-local function goUp(amount)
+local function goUp(amount: number)
     if amount == nil then
         amount = 1
     end
     for i=1, amount do
         if turtle.up() == false then
-            print("Block in the way, digging...", true)
+            SendDebug("Block in the way, digging...")
             digUp()
             if turtle.up() == false then
-                error("Can't move even when I removed the block")
+                SendError("Can't move even when I removed the block", {blockUp = turtle.inspectUp()})
             end
         end
     end
 end
 
-local function goDown(amount)
+local function goDown(amount: number)
     if amount == nil then
         amount = 1
     end
     for i=1, amount do
         if turtle.down() == false then
-            print("Block in the way, digging...", true)
+            SendDebug("Block in the way, digging...", true)
             digDown()
             if turtle.down() == false then
-                error("Can't move even when I removed the block")
+                SendError("Can't move even when I removed the block", {blockDown = turtle.inspectDown()})
             end
         end
     end
 end
 
-local function sendOverWireless(type, data)
-    local message = {
+local function sendOverWireless(type: string, data: any)
+    local message: Message = {
         type = type,
         origin = os.getComputerID(),
         data = data
     }
-    print("SEND: "..textutils.serialise(message), true)
-    wirelessModem.transmit(wirelessChannel, wirelessChannel, message)
+    SendDebug("SEND: "..message.type, message)
+    wirelessModem.transmit(wirelessChannel, wirelessChannel, message as table)
 end
 
-local function selectItem(itemName)
+local function selectItem(itemName: string)
     for i = 1, 16 do  
         local foundItem = turtle.getItemDetail(i)
-        if foundItem and foundItem.name == itemName and foundItem.count > 3 then
+        if not foundItem is nil and foundItem.name == itemName and foundItem.count as number > 3 then
             turtle.select(i)
             return
         end
     end
-    error("Couldnt find saplings or not atleast four")
+    SendError("Couldnt find saplings or not atleast four")
 end
 
-local function checkIfEnoughSaplings()
-    local amount = 0
+local function checkIfEnoughSaplings(): boolean
+    local amount: number = 0
     for i = 1, 16 do  
         local foundItem = turtle.getItemDetail(i)
-        if foundItem and foundItem.name == "minecraft:spruce_sapling" then
-            amount = amount + foundItem.count
+        if not foundItem is nil and foundItem.name == "minecraft:spruce_sapling" then
+            amount = amount + foundItem.count as number
         end
         if amount > 23 then
             return true
@@ -179,7 +186,7 @@ local function harvestTree()
     goForward()
     while true do
         local success, block = turtle.inspect()
-        if (success and block.name ~= "minecraft:spruce_log") or success == false then
+        if (not block is string and block.name ~= "minecraft:spruce_log") or success == false then
             break
         end
         dig()
@@ -196,8 +203,8 @@ local function harvestTree()
 
     while true do
         dig()
-        local success, block = turtle.inspectDown()
-        if success and (block.name == "minecraft:podzol" or block.name == "minecraft:dirt" or block.name == "minecraft:grass_block") then
+        local _, block = turtle.inspectDown()
+        if not block is string and (block.name == "minecraft:podzol" or block.name == "minecraft:dirt" or block.name == "minecraft:grass_block") then
             break
         end
         digDown()
@@ -216,10 +223,10 @@ local function farmRoutine()
     SetFarmingStatus()
     while true do
         local success, block = turtle.inspect()
-        if success and block.name == "minecraft:spruce_log" then
+        if not block is string and block.name == "minecraft:spruce_log" then
             harvestTree()
             plantNewTree()
-        elseif success and block.name == "minecraft:spruce_leaves" then
+        elseif not block is string and block.name == "minecraft:spruce_leaves" then
             dig()
         elseif success then
             return
@@ -237,8 +244,8 @@ local function returnHome()
     turtle.turnLeft()
     turtle.turnLeft()
     while true do
-        local success, block = turtle.inspect()
-        if success and block.name == "computercraft:wired_modem_full" then
+        local _, block = turtle.inspect()
+        if not block is string and block.name == "computercraft:wired_modem_full" then
             turtle.turnLeft()
             turtle.turnLeft()
             return
@@ -248,7 +255,7 @@ local function returnHome()
         end
 
         if blocksWalked > 70 then
-            error("Walked more than 70 blocks to get back")
+            SendError("Walked more than 70 blocks to get back")
         end
     end
 end
@@ -256,7 +263,7 @@ end
 local function refuelTurtle()
     SetRefuelingStatus()
     turtle.select(1)
-    print("REFUEL", true)
+    SendDebug("REFUEL", {fuelLevel = turtle.getFuelLevel()})
     turtle.refuel()
     SetDoneStatus()
 end
@@ -266,7 +273,7 @@ local function startRun()
     SetFarmingStatus()
     isFarming = true
     if not checkIfEnoughSaplings() then
-        error("Tried to start run without saplings")
+        SendError("Tried to start run without saplings")
     end
     goForward()
     goUp(3)
@@ -278,28 +285,32 @@ local function startRun()
     SetWaitingStatus()
 end
 
-local function resetLocationToStart()
+local function resetLocationToStart(): boolean
     SetReturningStatus()
-    local harvestFase
+    local harvestFase: string
     local sucUp, blockUp = turtle.inspectUp()
     if not sucUp then
         goUp()
         sucUp, blockUp = turtle.inspect()
     end
-    if sucUp and blockUp.name == "minecraft:spruce_log" then
+    if not blockUp is string and blockUp.name == "minecraft:spruce_log" then
         harvestFase = "HARVEST_1"
     end
 
     if harvestFase == nil then
         goDown()
         local sucDown, blockDown = turtle.inspectDown()
-        print(blockDown.name)
+        if not blockDown is string then
+            SendDebug(blockDown.name as string)
+        end
         if not sucDown then
             goDown()
             sucDown, blockDown = turtle.inspectDown()
-            print(blockDown.name)
+            if not blockDown is string then
+                SendDebug(blockDown.name as string)
+            end
         end
-        if sucDown and blockDown.name == "minecraft:spruce_log" then
+        if not blockDown is string and blockDown.name == "minecraft:spruce_log" then
             harvestFase = "HARVEST_2"
         end
     end
@@ -308,14 +319,16 @@ local function resetLocationToStart()
         local amountDown = 1
         while true do
             local sucDown, blockDown = turtle.inspectDown()
-            print(blockDown.name)
-            if sucDown then
+            if not blockDown is string then
+                SendDebug(blockDown.name as string)
+            end
+            if not blockDown is string then
                 if blockDown.name == "minecraft:spruce_sapling" then
                     return false
                 elseif blockDown.name == "minecraft:podzol" or blockDown.name == "minecraft:dirt" or blockDown.name == "minecraft:grass_block" then
                     return false
                 elseif blockDown.name == "minecraft:spruce_slab" or blockDown.name == "minecraft:spruce_fence_gate" or blockDown.name == "minecraft:spruce_planks" or blockDown.name == "minecraft:water" then
-                    print(amountDown)
+                    SendDebug(amountDown as string)
                     if amountDown < 3 then
                         harvestFase = "MOVING_BACK"
                         break
@@ -324,7 +337,7 @@ local function resetLocationToStart()
                         break
                     end
                 else
-                    print("didnt find right block", true)
+                    SendDebug("Didnt find right block", blockDown)
                     return false
                 end
             else
@@ -342,7 +355,7 @@ local function resetLocationToStart()
         goUp()
         while true do
             local success, block = turtle.inspect()
-            if (success and block.name ~= "minecraft:spruce_log") or success == false then
+            if (not block is string and block.name ~= "minecraft:spruce_log") or success == false then
                 break
             end
             dig()
@@ -359,8 +372,8 @@ local function resetLocationToStart()
 
         while true do
             dig()
-            local success, block = turtle.inspectDown()
-            if success and (block.name == "minecraft:podzol" or block.name == "minecraft:dirt" or block.name == "minecraft:grass_block") then
+            local _, block = turtle.inspectDown()
+            if not block is string and (block.name == "minecraft:podzol" or block.name == "minecraft:dirt" or block.name == "minecraft:grass_block") then
                 break
             end
             digDown()
@@ -385,8 +398,8 @@ local function resetLocationToStart()
         goDown()
         while true do
             dig()
-            local success, block = turtle.inspectDown()
-            if success and (block.name == "minecraft:podzol" or block.name == "minecraft:dirt" or block.name == "minecraft:grass_block") then
+            local _, block = turtle.inspectDown()
+            if not block is string and (block.name == "minecraft:podzol" or block.name == "minecraft:dirt" or block.name == "minecraft:grass_block") then
                 break
             end
             digDown()
@@ -416,8 +429,8 @@ local function resetLocationToStart()
 
 
     while true do
-        local succes, block = turtle.inspect()
-        if succes then
+        local _, block = turtle.inspect()
+        if not block is string then
             for i=1, 3 do
                 if block.name == "computercraft:wired_modem_full" then
                     turtle.turnLeft()
@@ -437,10 +450,10 @@ local function resetLocationToStart()
 end
 
 
-local function goToStart()
+local function goToStart(): boolean
     for i=1, 4 do
-        local success, block = turtle.inspect()
-        if success and block.name == "computercraft:wired_modem_full" then
+        local _, block = turtle.inspect()
+        if not block is string and block.name == "computercraft:wired_modem_full" then
             turtle.turnLeft()
             turtle.turnLeft()
             return true
@@ -462,17 +475,17 @@ local function executeCommands()
         if #tasklist < 1 then
             os.pullEvent("task_added")
         end
-        local message = tasklist[#tasklist]
+        local message: Message = tasklist[#tasklist]
         table.remove(tasklist, #tasklist)
         if message ~= nil then
-            print("[COMMAND] "..message.type.. " FROM: "..message.origin, true)
+            SendDebug("[COMMAND] "..message.type.. " FROM: "..message.origin, message)
             if message.type == "REFUEL" then
                 refuelTurtle()
             elseif message.type == "START_RUN" then
                 startRun()
             end
         else
-            SendWarning("[WARNING] Tried to execute an empty command (nil exception)")
+            SendWarning("Tried to execute an empty command (nil exception)")
         end
         
     end
@@ -480,9 +493,10 @@ end
 
 local function listenForCommands()
     while true do
-        local event, side, channel, replyChannel, message, distance = os.pullEvent("modem_message")
+        local event, side, channel, replyChannel, _message, distance = os.pullEvent("modem_message")
+        local message: Message = _message as Message
         if message.data and message.data == os.getComputerID() then
-            print("[RECEIVED] "..message.type.." FROM: "..message.origin, true)
+            SendDebug("[RECEIVED] "..message.type.." FROM: "..message.origin, message)
             if message.type == "START_RUN" then
                 if not isFarming then
                     table.insert(tasklist, 1, message)
@@ -494,7 +508,7 @@ local function listenForCommands()
             end
         else
             if message.type == "IS_ONLINE" then
-                print("[RECEIVED] "..message.type.." FROM: "..message.origin, true)
+                SendDebug("[RECEIVED] "..message.type.." FROM: "..message.origin, message)
                 sendOverWireless("ONLINE", isFarming)
             elseif message.type == "REBOOT" then
                 os.reboot()
@@ -507,14 +521,14 @@ end
 local function initComs()
     wirelessModem.open(wirelessChannel)
     if not wirelessModem.isOpen(wirelessChannel) then
-        error("Couldn't Establish Wireless Connection")
+        SendError("Couldn't Establish Wireless Connection")
     end
 end
 
 local function main()
     initComs()
     if goToStart() == false then
-        error("Couldn't get to the start")
+        SendError("Couldn't get to the start")
     end
     sendOverWireless("ONLINE", isFarming)
     parallel.waitForAll(listenForCommands, executeCommands)
