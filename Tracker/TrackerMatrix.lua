@@ -242,13 +242,13 @@ local function openMessagesConnection()
         elseif eventData[1] == "websocket_closed" and eventData[2] == wsUrl then
             socket = nil
             --sendInfo("Connection with Tracker Server closed")
-            sendDebug("Connection with Tracker Server closed")
+            sendDebug("Connection with Tracker Server closed", eventData)
             protocolHasBeenSend = false
             timer_id = os.startTimer(1)
 
         elseif eventData[1] == "websocket_failure" and eventData[2] == wsUrl then
             socket = nil
-            sendDebug("Connection with Tracker Server failed: "..eventData[3])
+            sendDebug("Connection with Tracker Server failed: "..eventData[3], eventData)
             if protocolHasBeenSend then
                 --sendWarning("WS connection failed", {taskList=tasklist})
             end
@@ -261,8 +261,9 @@ local function openMessagesConnection()
             sendDebug("Connecting to Tracker Server...")
 
         elseif eventData[1] == "http_failure" and eventData[2] == httpUrl.."/message/new" then
-            sendDebug(eventData[3])
-            if eventData[4].getResponseCode() == 401 then
+            print(eventData[3], false)
+            print(eventData[4].getResponseCode(), false)
+            if eventData[4] and eventData[4].getResponseCode() == 401 then
                 getToken(true)
             end
         end
@@ -277,6 +278,10 @@ local function bind(f)
             if err == "Terminated" then
                 sendDebug("Matrix has been manually terminated", {taskList=tasklist})
                 error(err)
+            elseif string.find(err, "attempt to use a closed file") then
+                sendDebug(err, {tasklist=tasklist, socket=socket})
+                os.sleep(1)
+                os.reboot()
             else
                 sendError(err, {taskList=tasklist})
                 error(err)
