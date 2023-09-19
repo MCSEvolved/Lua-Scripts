@@ -1,3 +1,5 @@
+-- This is the Teal version of the tracker
+
 --------TYPES-------------------------------------------
 local Modem = require("@types.peripherals.modem")
 local Coordinates = require("@types.shared.Location")

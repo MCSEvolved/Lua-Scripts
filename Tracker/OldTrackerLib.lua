@@ -1,3 +1,5 @@
+-- This is the lua version of the tracker | OUTDATED
+
 local isTurtle = false
 local crashedState = false
 local function getWirelessModem()
