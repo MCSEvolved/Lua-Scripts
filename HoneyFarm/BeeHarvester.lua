@@ -1,4 +1,4 @@
-require("Tracker.TrackerLib")
+require("Tracker.OldTrackerLib")
 
 local outputBarrelName = "minecraft:barrel_68"
 local outputBarrel
