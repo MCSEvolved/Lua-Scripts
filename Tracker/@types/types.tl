@@ -72,6 +72,7 @@ end
 local enum Command
     "STOP"
     "REBOOT"
+    "CHANGE_LABEL"
 end
 
 
