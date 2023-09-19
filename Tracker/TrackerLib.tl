@@ -428,6 +428,10 @@ if isTurtle then
     end
 end
 
+local function changeLabel(newLabel:string)
+    os.setComputerLabel(newLabel)
+end
+
 
 local function listenForCommands()
     while true do
@@ -445,6 +449,9 @@ local function listenForCommands()
                     end
                 elseif commandAction.command == "REBOOT" then
                     error("TRACKER_REBOOT")
+                elseif string.find(commandAction.command, "CHANGE_LABEL:") then
+                    string.gsub("^[^:]*:", "", commandAction.command)
+                    changeLabel(commandAction.command)
                 end
             end
         end
@@ -515,7 +522,7 @@ local function bind(f: function): function
             elseif string.find(err as string, "ERROR_ALREADY_SEND") then
                 SetErrorStatus()
             else
-                SendError(err as string)
+                SendError(err as string, nil, nil, false)
                 SetErrorStatus()
             end
         end
