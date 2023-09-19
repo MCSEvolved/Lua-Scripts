@@ -5,7 +5,7 @@ local Modem = require("@types.peripherals.modem")
 local record Message
     type: string
     data: any
-    origin: number
+    origin: string|number
 end
 
 local function findWirelessModem(): Modem
