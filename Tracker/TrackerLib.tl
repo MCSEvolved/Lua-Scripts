@@ -209,6 +209,7 @@ global function SendError(content: string, metaData: any|nil, printToTerminal: b
         term.setTextColor(colors.white)
     end
     sendMessage(content, "Error", metaData)
+    print("throwing exception on SendError(): "..throwException as string)
     if throwException then
         error("ERROR_ALREADY_SEND")
     end
@@ -522,7 +523,7 @@ local function bind(f: function): function
             elseif string.find(err as string, "ERROR_ALREADY_SEND") then
                 SetErrorStatus()
             else
-                SendError(err as string, nil, nil, false)
+                SendError(err as string, nil, true, false)
                 SetErrorStatus()
             end
         end
