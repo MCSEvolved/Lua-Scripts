@@ -2,8 +2,8 @@ local Coordinates = require("@types.shared.Location")
 
 
 local record Message
-    messageType: MessageType
-    messageSource: MessageSource
+    type: MessageType
+    source: MessageSource
     content: string
     metadata: any|nil
     sourceId: string

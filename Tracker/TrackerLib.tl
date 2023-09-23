@@ -93,7 +93,7 @@ local function sendOverWireless(messageType: TrackerMessageType, content: any)
 end
 
 local function validateMessage(message: Message): boolean
-    return message.messageType ~= nil and message.messageSource ~= nil and message.content ~= nil and message.sourceId ~= nil
+    return message.type ~= nil and message.source ~= nil and message.content ~= nil and message.sourceId ~= nil
 end
 
 local function sendMessage(content: string, messageType: MessageType, metaData: any|nil)
@@ -115,16 +115,16 @@ local function sendMessage(content: string, messageType: MessageType, metaData: 
         }
         
         message = {
-            messageType = messageType,
-            messageSource = source,
+            type = messageType,
+            source = source,
             content = content,
             metadata = metaData,
             sourceId = tostring(computerId)
         }
     else
         message = {
-            messageType = messageType,
-            messageSource = source,
+            type = messageType,
+            source = source,
             content = content,
             metadata = {},
             sourceId = tostring(computerId)
@@ -209,7 +209,8 @@ global function SendError(content: string, metaData: any|nil, printToTerminal: b
         term.setTextColor(colors.white)
     end
     sendMessage(content, "Error", metaData)
-    print("throwing exception on SendError(): "..throwException as string)
+    print("throwing exception on SendError()")
+    print(throwException)
     if throwException then
         error("ERROR_ALREADY_SEND")
     end
