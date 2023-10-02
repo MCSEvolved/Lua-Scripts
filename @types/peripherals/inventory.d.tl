@@ -6,7 +6,7 @@ end
 
 local record Inventory
     size: function(): integer
-    list: function(): {SlotInfo|nil}
+    list: function(): {integer:SlotInfo|nil}
     getItemDetail: function(slot: integer): table|nil
     getItemLimit: function(slot: integer): number
     pushItems: function(toName: string, fromSlot: integer, limit: integer|nil, toSlot: integer|nil): integer
