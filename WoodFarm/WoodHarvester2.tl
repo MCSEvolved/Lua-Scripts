@@ -151,6 +151,7 @@ local function checkIfEnoughSaplings(): boolean
             amount = amount + foundItem.count as number
         end
         if amount > 23 then
+            SendDebug("Found "..amount as string.." saplings", foundItem)
             return true
         end
     end
@@ -158,6 +159,7 @@ local function checkIfEnoughSaplings(): boolean
 end
 
 local function plantNewTree()
+    SendDebug("Planting tree")
     selectItem("minecraft:spruce_sapling")
     goBack()
     turtle.suckDown()
@@ -176,6 +178,7 @@ local function plantNewTree()
     turtle.turnRight()
     goForward()
     turtle.turnLeft()
+    SendDebug("Done planting tree")
 
 end
 
@@ -184,6 +187,7 @@ local function harvestTree()
     goDown()
     dig()
     goForward()
+    SendDebug("Start harvesting tree")
     while true do
         local success, block = turtle.inspect()
         if (not block is string and block.name ~= "minecraft:spruce_log") or success == false then
@@ -193,6 +197,7 @@ local function harvestTree()
         digUp()
         goUp()
     end
+    SendDebug("Reached top, switching sides")
 
     dig()
     goForward()
@@ -201,6 +206,7 @@ local function harvestTree()
     goForward()
     turtle.turnLeft()
 
+    SendDebug("Start harvesting next side")
     while true do
         dig()
         local _, block = turtle.inspectDown()
@@ -217,13 +223,17 @@ local function harvestTree()
     goForward()
     digUp()
     goUp()
+    SendDebug("Done with tree")
 end
 
 local function farmRoutine()
+    local treesHarvested: number = 0
     SetFarmingStatus()
     while true do
         local success, block = turtle.inspect()
         if not block is string and block.name == "minecraft:spruce_log" then
+            treesHarvested = treesHarvested + 1
+            SendDebug("Starting on tree "..treesHarvested)
             harvestTree()
             plantNewTree()
         elseif not block is string and block.name == "minecraft:spruce_leaves" then
@@ -237,6 +247,7 @@ local function farmRoutine()
 end
 
 local function returnHome()
+    SendDebug("Returing back home")
     SetReturningStatus()
     local blocksWalked = 0
     goBack()
@@ -246,6 +257,7 @@ local function returnHome()
     while true do
         local _, block = turtle.inspect()
         if not block is string and block.name == "computercraft:wired_modem_full" then
+            SendDebug("Found modem")
             turtle.turnLeft()
             turtle.turnLeft()
             return
@@ -263,14 +275,13 @@ end
 local function refuelTurtle()
     SetRefuelingStatus()
     turtle.select(1)
-    SendDebug("REFUEL", {fuelLevel = turtle.getFuelLevel()})
+    SendDebug("Refueling", {fuelLevel = turtle.getFuelLevel()})
     turtle.refuel()
     SetDoneStatus()
 end
 
 
 local function startRun()
-    SetFarmingStatus()
     isFarming = true
     if not checkIfEnoughSaplings() then
         SendError("Tried to start run without saplings")
@@ -478,7 +489,7 @@ local function executeCommands()
         local message: Message = tasklist[#tasklist]
         table.remove(tasklist, #tasklist)
         if message ~= nil then
-            SendDebug("[COMMAND] "..message.type.. " FROM: "..message.origin, message)
+            SendDebug("[COMMAND] "..message.type.. " FROM: "..message.origin as string, message)
             if message.type == "REFUEL" then
                 refuelTurtle()
             elseif message.type == "START_RUN" then
@@ -496,7 +507,7 @@ local function listenForCommands()
         local event, side, channel, replyChannel, _message, distance = os.pullEvent("modem_message")
         local message: Message = _message as Message
         if message.data and message.data == os.getComputerID() then
-            SendDebug("[RECEIVED] "..message.type.." FROM: "..message.origin, message)
+            SendDebug("[RECEIVED] "..message.type.." FROM: "..message.origin as string, message)
             if message.type == "START_RUN" then
                 if not isFarming then
                     table.insert(tasklist, 1, message)
@@ -508,7 +519,7 @@ local function listenForCommands()
             end
         else
             if message.type == "IS_ONLINE" then
-                SendDebug("[RECEIVED] "..message.type.." FROM: "..message.origin, message)
+                SendDebug("[RECEIVED] "..message.type.." FROM: "..message.origin as string, message)
                 sendOverWireless("ONLINE", isFarming)
             elseif message.type == "REBOOT" then
                 os.reboot()

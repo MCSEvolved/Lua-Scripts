@@ -38,7 +38,7 @@ local function getNameOfTurtleById(id: number): string
             return t
         end
     end
-    SendError("Tried to find turtle but couldnt find it", {found=turtle, lookingFor=id})
+    SendError("Tried to find turtle but couldnt find it", {found=turtle, lookingFor=id}, true, false)
 end
 
 local bufferChestWood: Inventory

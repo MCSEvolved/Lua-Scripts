@@ -209,8 +209,6 @@ global function SendError(content: string, metaData: any|nil, printToTerminal: b
         term.setTextColor(colors.white)
     end
     sendMessage(content, "Error", metaData)
-    print("throwing exception on SendError()")
-    print(throwException)
     if throwException then
         error("ERROR_ALREADY_SEND")
     end
